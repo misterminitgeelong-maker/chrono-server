@@ -1,36 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
   <title>Chrono Repair Studio</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Georgia, serif; background: #0f0f1a; color: #fff; }
-    input, select, textarea, button { font-family: inherit; }
-    .sidebar { width:240px; background:#1a1a2e; flex-shrink:0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
-    .bottom-nav { display:none; }
-    .desktop-table { display:block; }
-    .mobile-cards { display:none; }
-    @media (max-width: 768px) {
-      .sidebar { display: none !important; }
-      .bottom-nav { display: flex !important; position:fixed; bottom:0; left:0; right:0; background:#1a1a2e; border-top:1px solid rgba(255,255,255,0.08); z-index:500; padding:8px 0 14px; justify-content:space-around; }
-      .main-scroll { padding-bottom: 80px !important; }
-      .desktop-table { display: none !important; }
-      .mobile-cards { display: block !important; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,serif;background:#0f0f1a;color:#fff}
+    input,select,textarea,button{font-family:inherit}
+    .sidebar{width:240px;background:#1a1a2e;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+    .bnav{display:none}
+    .dtable{display:block}
+    .mcards{display:none}
+    @media(max-width:768px){
+      .sidebar{display:none!important}
+      .bnav{display:flex!important;position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;border-top:1px solid rgba(255,255,255,0.08);z-index:500;padding:8px 0 14px;justify-content:space-around}
+      .mscroll{padding-bottom:80px!important}
+      .dtable{display:none!important}
+      .mcards{display:block!important}
     }
-    select option { background: #1a1a2e; color: #fff; }
+    select option{background:#1a1a2e;color:#fff}
   </style>
 </head>
 <body>
 <div id="root"></div>
-
-<!-- Movements in plain JS - parsed separately from Babel -->
 <script>
-window.MOVEMENTS = {"0100":500,
+window.MOVEMENTS={"0100":500,
   "0110":500,
   "0200":500,
   "0210":500,
@@ -738,701 +735,666 @@ window.MOVEMENTS = {"0100":500,
   "TY3135":438,
   "TY7750":438};
 </script>
+<script>
+(function(){
+var h=React.createElement,useState=React.useState,useEffect=React.useEffect,useRef=React.useRef,Fragment=React.Fragment;
+var SUPABASE_URL="https://jyvsokbmewsuddwgnosw.supabase.co";
+var SUPABASE_KEY="sb_publishable_C4qVSQ24r9edrh5lmEZV7g_mAGZm7j_";
+var APP_URL=window.location.origin;
+var MOVEMENTS=window.MOVEMENTS;
 
-<script type="text/babel">
-const { useState, useEffect, useRef } = React;
-
-const SUPABASE_URL = "https://jyvsokbmewsuddwgnosw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_C4qVSQ24r9edrh5lmEZV7g_mAGZm7j_";
-const SERVER_URL   = "";
-const APP_URL      = window.location.origin;
-const MOVEMENTS    = window.MOVEMENTS;
-
-async function sbFetch(path, options = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      "Prefer": options.prefer || "return=representation",
-      ...(options.headers || {}),
-    },
+function sbFetch(path,opts){
+  opts=opts||{};
+  return fetch(SUPABASE_URL+"/rest/v1/"+path,Object.assign({},opts,{
+    headers:Object.assign({"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":opts.prefer||"return=representation"},opts.headers||{})
+  })).then(function(r){
+    if(!r.ok)return r.text().then(function(t){throw new Error(t)});
+    return r.text().then(function(t){return t?JSON.parse(t):[]});
   });
-  if (!res.ok) { const err = await res.text(); throw new Error(err); }
-  const text = await res.text();
-  return text ? JSON.parse(text) : [];
 }
 
-const STATUS_CONFIG = {
-  "Go Ahead":             { color: "#3B82F6", bg: "#EFF6FF" },
-  "Not Going":            { color: "#EF4444", bg: "#FEF2F2" },
-  "Collected":            { color: "#6B7280", bg: "#F9FAFB" },
-  "In Progress":          { color: "#8B5CF6", bg: "#F5F3FF" },
-  "Awaiting Parts":       { color: "#F59E0B", bg: "#FFFBEB" },
-  "Ready for Collection": { color: "#10B981", bg: "#ECFDF5" },
+var STATUS_CONFIG={
+  "Go Ahead":{color:"#3B82F6",bg:"#EFF6FF"},
+  "Not Going":{color:"#EF4444",bg:"#FEF2F2"},
+  "Collected":{color:"#6B7280",bg:"#F9FAFB"},
+  "In Progress":{color:"#8B5CF6",bg:"#F5F3FF"},
+  "Awaiting Parts":{color:"#F59E0B",bg:"#FFFBEB"},
+  "Ready for Collection":{color:"#10B981",bg:"#ECFDF5"}
 };
-const ALL_STATUSES = Object.keys(STATUS_CONFIG);
+var ALL_STATUSES=Object.keys(STATUS_CONFIG);
 
-const SERVICES = [
-  {id:"batt",       label:"Battery Replacement",             price:41,    cat:"quick"},
-  {id:"gasket",     label:"Gasket Replacement",              price:6,     cat:"quick"},
-  {id:"prestest",   label:"Pressure Test",                   price:12,    cat:"quick"},
-  {id:"springbar",  label:"Spring Bar/Pin",                  price:6,     cat:"quick"},
-  {id:"capac",      label:"Capacitor Replacement",           price:150,   cat:"quick"},
-  {id:"ultrasonic", label:"Ultrasonic Clean",                price:62,    cat:"quick"},
-  {id:"hand",       label:"Hand Refitting",                  price:49.95, cat:"quick"},
-  {id:"stem",       label:"Stem Replacement",                price:49.95, cat:"quick"},
-  {id:"crowng",     label:"Crown Replacement (Generic)",     price:39.95, cat:"quick"},
-  {id:"crowngen",   label:"Crown Replacement (Genuine)",     price:0,     cat:"quick", quoted:true},
-  {id:"glassmin",   label:"Mineral Glass",                   price:59.95, cat:"glass"},
-  {id:"glasssaph",  label:"Sapphire Glass",                  price:99.95, cat:"glass"},
-  {id:"glassplexi", label:"Plexi Glass",                     price:81,    cat:"glass"},
-  {id:"polishbasic",label:"Basic Polish",                    price:75,    cat:"polish"},
-  {id:"polishmed",  label:"Medium Polish",                   price:112,   cat:"polish"},
-  {id:"polishfull", label:"Full Refinish",                   price:150,   cat:"polish"},
-  {id:"svcbasic",   label:"Basic Mechanical Service",        price:438,   cat:"service"},
-  {id:"svcauto",    label:"Automatic Service",               price:500,   cat:"service"},
-  {id:"svcchrono",  label:"Mechanical Chronograph Service",  price:688,   cat:"service"},
-  {id:"svcquartz",  label:"Basic Quartz Service",            price:375,   cat:"service"},
-  {id:"svcqchrono", label:"Quartz Chronograph Service",      price:562,   cat:"service"},
+var SERVICES=[
+  {id:"batt",label:"Battery Replacement",price:41,cat:"quick"},
+  {id:"gasket",label:"Gasket Replacement",price:6,cat:"quick"},
+  {id:"prestest",label:"Pressure Test",price:12,cat:"quick"},
+  {id:"springbar",label:"Spring Bar/Pin",price:6,cat:"quick"},
+  {id:"capac",label:"Capacitor Replacement",price:150,cat:"quick"},
+  {id:"ultrasonic",label:"Ultrasonic Clean",price:62,cat:"quick"},
+  {id:"hand",label:"Hand Refitting",price:49.95,cat:"quick"},
+  {id:"stem",label:"Stem Replacement",price:49.95,cat:"quick"},
+  {id:"crowng",label:"Crown Replacement (Generic)",price:39.95,cat:"quick"},
+  {id:"crowngen",label:"Crown Replacement (Genuine)",price:0,cat:"quick",quoted:true},
+  {id:"glassmin",label:"Mineral Glass",price:59.95,cat:"glass"},
+  {id:"glasssaph",label:"Sapphire Glass",price:99.95,cat:"glass"},
+  {id:"glassplexi",label:"Plexi Glass",price:81,cat:"glass"},
+  {id:"polishbasic",label:"Basic Polish",price:75,cat:"polish"},
+  {id:"polishmed",label:"Medium Polish",price:112,cat:"polish"},
+  {id:"polishfull",label:"Full Refinish",price:150,cat:"polish"},
+  {id:"svcbasic",label:"Basic Mechanical Service",price:438,cat:"service"},
+  {id:"svcauto",label:"Automatic Service",price:500,cat:"service"},
+  {id:"svcchrono",label:"Mechanical Chronograph Service",price:688,cat:"service"},
+  {id:"svcquartz",label:"Basic Quartz Service",price:375,cat:"service"},
+  {id:"svcqchrono",label:"Quartz Chronograph Service",price:562,cat:"service"}
 ];
-const CAT_LABELS = {quick:"Quick Jobs", glass:"Glass", polish:"Polishing", service:"Full Service"};
+var CAT_LABELS={quick:"Quick Jobs",glass:"Glass",polish:"Polishing",service:"Full Service"};
 
-function QRCode({ id, size=120 }) {
-  const url = `${APP_URL}?repair=${encodeURIComponent(id)}`;
-  const src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=1a1a2e&margin=4`;
-  return <img src={src} alt="QR" width={size} height={size} style={{borderRadius:6, border:"1px solid #e5e7eb"}} />;
+function QRCode(id,size){
+  size=size||120;
+  var url=APP_URL+"?repair="+encodeURIComponent(id);
+  var src="https://api.qrserver.com/v1/create-qr-code/?size="+size+"x"+size+"&data="+encodeURIComponent(url)+"&bgcolor=ffffff&color=1a1a2e&margin=4";
+  return h("img",{src:src,alt:"QR",width:size,height:size,style:{borderRadius:6,border:"1px solid #e5e7eb"}});
 }
 
-function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || {color:"#6B7280", bg:"#F9FAFB"};
-  return <span style={{background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.color}40`, borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:600, whiteSpace:"nowrap"}}>{status}</span>;
+function Badge(status){
+  var cfg=STATUS_CONFIG[status]||{color:"#6B7280",bg:"#F9FAFB"};
+  return h("span",{style:{background:cfg.bg,color:cfg.color,border:"1px solid "+cfg.color+"40",borderRadius:20,padding:"3px 12px",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}},status);
 }
 
-function printTicket(repair) {
-  const url = `${APP_URL}?repair=${encodeURIComponent(repair.id)}`;
-  const qr  = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=1a1a2e&margin=4`;
-  const esc = s => (s||"—").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  const win = window.open("","_blank");
-  win.document.write(`<!DOCTYPE html><html><head><title>Ticket ${repair.id}</title>
-  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Georgia,serif}
-  .lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;color:#9ca3af}
-  .val{font-size:14px;color:#111827}
-  .page{background:#fff;padding:24px;min-height:100vh;display:flex;flex-direction:column}
-  .hdr{text-align:center;border-bottom:2px solid #1a1a2e;padding-bottom:14px;margin-bottom:18px}
-  .qrbox{display:flex;align-items:center;gap:16px;border:1.5px dashed #d1d5db;border-radius:10px;padding:14px;margin:16px 0}
-  </style></head><body>
-  <div class="page">
-    <div class="hdr"><div style="font-size:20px;font-weight:bold;letter-spacing:.08em;color:#1a1a2e">&#x231A; CHRONO REPAIR STUDIO</div></div>
-    <div style="font-size:22px;font-weight:bold;text-align:center">${repair.id}</div>
-    <div style="margin:20px 0;display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div><div class="lbl">Customer</div><div class="val" style="font-weight:bold">${esc(repair.customer_name)}</div></div>
-      <div><div class="lbl">Watch</div><div class="val">${esc(repair.watch_brand)}</div></div>
-    </div>
-    <div class="qrbox"><img src="${qr}" width="110" height="110" style="border-radius:6px"/>
-      <div style="font-size:11px;color:#6b7280">Scan to check repair status anytime!</div>
-    </div>
-    <div style="margin-top:auto;text-align:center;font-size:11px;color:#9ca3af">Keep this receipt. Questions? Call 03 9123 4567</div>
-  </div>
-  <script>window.onload=function(){setTimeout(function(){window.print()},700)}<\/script>
-  </body></html>`);
+function printTicket(repair){
+  var url=APP_URL+"?repair="+encodeURIComponent(repair.id);
+  var qr="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data="+encodeURIComponent(url)+"&bgcolor=ffffff&color=1a1a2e&margin=4";
+  var esc=function(s){return(s||"—").replace(/</g,"&lt;").replace(/>/g,"&gt;")};
+  var win=window.open("","_blank");
+  var html="<!DOCTYPE html><html><head><title>"+repair.id+"</title>"
+    +"<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Georgia,serif}"
+    +".page{background:#fff;padding:24px;display:flex;flex-direction:column;min-height:100vh}"
+    +".hdr{text-align:center;border-bottom:2px solid #1a1a2e;padding-bottom:14px;margin-bottom:18px}"
+    +".qrbox{display:flex;align-items:center;gap:16px;border:1.5px dashed #d1d5db;border-radius:10px;padding:14px;margin:16px 0}"
+    +"</style></head><body>"
+    +"<div class='page'>"
+    +"<div class='hdr'><b style='font-size:20px;letter-spacing:.08em;color:#1a1a2e'>&#9962; CHRONO REPAIR STUDIO</b></div>"
+    +"<div style='font-size:22px;font-weight:bold;text-align:center'>"+repair.id+"</div>"
+    +"<div style='margin:20px 0;display:grid;grid-template-columns:1fr 1fr;gap:14px'>"
+    +"<div><div style='font-size:10px;color:#9ca3af;text-transform:uppercase'>Customer</div><b>"+esc(repair.customer_name)+"</b></div>"
+    +"<div><div style='font-size:10px;color:#9ca3af;text-transform:uppercase'>Watch</div>"+esc(repair.watch_brand)+"</div>"
+    +"</div>"
+    +"<div class='qrbox'><img src='"+qr+"' width='110' height='110' style='border-radius:6px'/>"
+    +"<div style='font-size:11px;color:#6b7280'>Scan to check repair status anytime!</div></div>"
+    +"<div style='margin-top:auto;text-align:center;font-size:11px;color:#9ca3af'>Keep this receipt. Questions? Call 03 9123 4567</div>"
+    +"</div><scr"+"ipt>window.onload=function(){setTimeout(function(){window.print()},700)}</scr"+"ipt>"
+    +"</body></html>";
+  win.document.write(html);
   win.document.close();
 }
 
-function QuoteModal({ repair, onSend, onClose, iStyle }) {
-  const [quote,setQuote] = useState(repair.quote||"");
-  const [msg,setMsg]     = useState("");
-  const [busy,setBusy]   = useState(false);
-  async function send(){if(!quote) return alert("Enter a quote amount");setBusy(true);await onSend(repair.id,quote,msg);setBusy(false);}
-  const preview = `Hi ${repair.customer_name||"there"}, your ${repair.watch_brand||"watch"} repair quote is $${quote||"___"}.
-${msg?msg+"
-":""}
-Reply YES to go ahead or NO to decline.`;
-  return (
-    <div style={{position:"fixed",inset:0,background:"#000a",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:"#1a1a2e",borderRadius:16,padding:28,width:480,maxWidth:"94vw",boxShadow:"0 8px 40px #0008"}}>
-        <div style={{fontSize:18,fontWeight:700,marginBottom:6}}>Send Quote SMS</div>
-        <div style={{fontSize:13,color:"#fff5",marginBottom:20}}>{repair.customer_name} — {repair.watch_brand} — {repair.phone}</div>
-        <label style={{fontSize:11,color:"#fff4",letterSpacing:".07em",display:"block",marginBottom:5}}>QUOTE ($)</label>
-        <input type="number" value={quote} onChange={e=>setQuote(e.target.value)} placeholder="e.g. 250" style={{...iStyle,fontSize:20,fontWeight:700,marginBottom:14}} />
-        <label style={{fontSize:11,color:"#fff4",letterSpacing:".07em",display:"block",marginBottom:5}}>EXTRA MESSAGE (optional)</label>
-        <textarea value={msg} onChange={e=>setMsg(e.target.value)} placeholder="e.g. Parts are in stock…" style={{...iStyle,minHeight:60,resize:"vertical",marginBottom:14}} />
-        <div style={{background:"#0f0f1a",borderRadius:8,padding:12,marginBottom:18}}>
-          <div style={{fontSize:10,color:"#fff3",marginBottom:6}}>SMS PREVIEW</div>
-          <div style={{fontSize:12,color:"#fff7",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{preview}</div>
-        </div>
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={send} disabled={busy} style={{flex:1,background:busy?"#6b7280":"#10b981",color:"#fff",border:"none",padding:"12px 20px",borderRadius:8,cursor:busy?"not-allowed":"pointer",fontWeight:700,fontSize:15}}>
-            {busy?"Sending…":"📱 Send SMS Quote"}
-          </button>
-          <button onClick={onClose} style={{background:"transparent",color:"#fff6",border:"1px solid #fff2",padding:"12px 20px",borderRadius:8,cursor:"pointer"}}>Cancel</button>
-        </div>
-      </div>
-    </div>
+function QuoteModal(repair,onSend,onClose,iStyle){
+  var _s1=useState(repair.quote||""),quote=_s1[0],setQuote=_s1[1];
+  var _s2=useState(""),msg=_s2[0],setMsg=_s2[1];
+  var _s3=useState(false),busy=_s3[0],setBusy=_s3[1];
+  function send(){
+    if(!quote)return alert("Enter a quote amount");
+    setBusy(true);
+    onSend(repair.id,quote,msg).finally(function(){setBusy(false)});
+  }
+  var preview="Hi "+(repair.customer_name||"there")+", your "+(repair.watch_brand||"watch")+" repair quote is $"+(quote||"___")+"."+(msg?"
+
+"+msg:"")+"
+
+Reply YES to go ahead or NO to decline.";
+  return h("div",{style:{position:"fixed",inset:0,background:"#000a",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center"}},
+    h("div",{style:{background:"#1a1a2e",borderRadius:16,padding:28,width:480,maxWidth:"94vw"}},
+      h("div",{style:{fontSize:18,fontWeight:700,marginBottom:6}},"Send Quote SMS"),
+      h("div",{style:{fontSize:13,color:"#fff5",marginBottom:20}},repair.customer_name+" — "+repair.watch_brand+" — "+repair.phone),
+      h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"QUOTE ($)"),
+      h("input",{type:"number",value:quote,onChange:function(e){setQuote(e.target.value)},placeholder:"e.g. 250",style:Object.assign({},iStyle,{fontSize:20,fontWeight:700,marginBottom:14})}),
+      h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"EXTRA MESSAGE (optional)"),
+      h("textarea",{value:msg,onChange:function(e){setMsg(e.target.value)},placeholder:"e.g. Parts in stock…",style:Object.assign({},iStyle,{minHeight:60,resize:"vertical",marginBottom:14})}),
+      h("div",{style:{background:"#0f0f1a",borderRadius:8,padding:12,marginBottom:18}},
+        h("div",{style:{fontSize:10,color:"#fff3",marginBottom:6}},"SMS PREVIEW"),
+        h("div",{style:{fontSize:12,color:"#fff7",lineHeight:1.7,whiteSpace:"pre-wrap"}},preview)
+      ),
+      h("div",{style:{display:"flex",gap:10}},
+        h("button",{onClick:send,disabled:busy,style:{flex:1,background:busy?"#6b7280":"#10b981",color:"#fff",border:"none",padding:"12px 20px",borderRadius:8,cursor:busy?"not-allowed":"pointer",fontWeight:700,fontSize:15}},busy?"Sending…":"📱 Send SMS Quote"),
+        h("button",{onClick:onClose,style:{background:"transparent",color:"#fff6",border:"1px solid #fff2",padding:"12px 20px",borderRadius:8,cursor:"pointer"}},"Cancel")
+      )
+    )
   );
 }
 
-function NewRepairForm({ iStyle, saving, form, setForm, onSave }) {
-  const [services,setServices] = useState([]);
-  const [mvSearch,setMvSearch] = useState("");
-  const [mvResult,setMvResult] = useState(null);
-  const [mvError,setMvError]   = useState(false);
-  const [customs,setCustoms]   = useState([]);
-  const [cLabel,setCLabel]     = useState("");
-  const [cPrice,setCPrice]     = useState("");
-  const [scanning,setScanning] = useState(false);
-  const fileRef = useRef(null);
+function NewRepairForm(props){
+  var iStyle=props.iStyle,saving=props.saving,form=props.form,setForm=props.setForm,onSave=props.onSave;
+  var _a=useState([]),services=_a[0],setServices=_a[1];
+  var _b=useState(""),mvSearch=_b[0],setMvSearch=_b[1];
+  var _c=useState(null),mvResult=_c[0],setMvResult=_c[1];
+  var _d=useState(false),mvError=_d[0],setMvError=_d[1];
+  var _e=useState([]),customs=_e[0],setCustoms=_e[1];
+  var _f=useState(""),cLabel=_f[0],setCLabel=_f[1];
+  var _g=useState(""),cPrice=_g[0],setCPrice=_g[1];
+  var _h=useState(false),scanning=_h[0],setScanning=_h[1];
+  var fileRef=useRef(null);
 
-  function recalc(svcs,mv,custs) {
-    const all=[...svcs,...(mv?[mv]:[]),...custs];
-    const total=all.reduce((s,i)=>s+i.price,0);
-    setForm(p=>({...p,quote:total||"",issue:all.map(i=>`${i.label}: $${i.price}`).join("
-")}));
+  function recalc(svcs,mv,custs){
+    var all=svcs.concat(mv?[mv]:[]).concat(custs);
+    var total=all.reduce(function(s,i){return s+i.price},0);
+    setForm(function(p){return Object.assign({},p,{quote:total||"",issue:all.map(function(i){return i.label+": $"+i.price}).join("
+")})});
   }
-  function toggleSvc(svc) {
-    setServices(prev=>{
-      const exists=prev.find(s=>s.id===svc.id);
-      const item=svc.quoted?{...svc,label:svc.label+" (to quote)",price:0}:svc;
-      const next=exists?prev.filter(s=>s.id!==svc.id):[...prev,item];
-      recalc(next,mvResult,customs); return next;
+  function toggleSvc(svc){
+    setServices(function(prev){
+      var exists=prev.find(function(s){return s.id===svc.id});
+      var item=svc.quoted?Object.assign({},svc,{label:svc.label+" (to quote)",price:0}):svc;
+      var next=exists?prev.filter(function(s){return s.id!==svc.id}):prev.concat([item]);
+      recalc(next,mvResult,customs);return next;
     });
   }
-  function searchMv() {
-    const q=mvSearch.trim().toUpperCase();
-    const price=MOVEMENTS[q];
-    if(price){const r={id:"mv",label:`Movement: ${q}`,price};setMvResult(r);setMvError(false);recalc(services,r,customs);}
+  function searchMv(){
+    var q=mvSearch.trim().toUpperCase();
+    var price=MOVEMENTS[q];
+    if(price){var r={id:"mv",label:"Movement: "+q,price:price};setMvResult(r);setMvError(false);recalc(services,r,customs);}
     else{setMvResult(null);setMvError(true);}
   }
   function removeMv(){setMvResult(null);setMvSearch("");setMvError(false);recalc(services,null,customs);}
   function addCustom(){
-    if(!cLabel.trim()||!cPrice) return;
-    const item={id:"c-"+Date.now(),label:cLabel.trim(),price:parseFloat(cPrice)};
-    const next=[...customs,item];setCustoms(next);setCLabel("");setCPrice("");recalc(services,mvResult,next);
+    if(!cLabel.trim()||!cPrice)return;
+    var item={id:"c-"+Date.now(),label:cLabel.trim(),price:parseFloat(cPrice)};
+    var next=customs.concat([item]);setCustoms(next);setCLabel("");setCPrice("");recalc(services,mvResult,next);
   }
-  function removeCustom(id){const next=customs.filter(c=>c.id!==id);setCustoms(next);recalc(services,mvResult,next);}
+  function removeCustom(id){var next=customs.filter(function(c){return c.id!==id});setCustoms(next);recalc(services,mvResult,next);}
 
-  async function handlePhoto(e) {
-    const file=e.target.files[0]; if(!file) return;
+  function handlePhoto(e){
+    var file=e.target.files[0];if(!file)return;
     setScanning(true);
-    try {
-      const fd=new FormData(); fd.append("photo",file);
-      const res=await fetch("/analyze-watch",{method:"POST",body:fd});
-      const raw=await res.text();
-      if(!res.ok){let m="Server error "+res.status;try{m=JSON.parse(raw).error||m}catch(e){}throw new Error(m);}
-      const data=JSON.parse(raw);
-      if(data.error) throw new Error(data.error);
-      if(data.brand&&data.brand!=="null") setForm(p=>({...p,watch_brand:data.brand}));
-      if(data.movement&&data.movement!=="null"){
-        const det=data.movement.toUpperCase().trim();
-        const price=MOVEMENTS[det];
-        if(price){const r={id:"mv",label:`Movement: ${det} (Scanned)`,price};setMvResult(r);setMvError(false);recalc(services,r,customs);alert(`Scan complete!
-Brand: ${data.brand||"—"}
-Movement: ${det} — $${price}`);}
-        else{setMvSearch(det);setMvError(true);alert(`Movement "${det}" not in price list — add as custom item.`);}
-      } else if(data.brand&&data.brand!=="null"){
-        alert(`Brand: ${data.brand}
-No movement visible — enter manually.`);
-      } else {
-        alert("Couldn't read caseback. Try closer / better lighting.");
-      }
-    } catch(err){alert("Scan failed: "+err.message);}
-    finally{setScanning(false);if(fileRef.current)fileRef.current.value="";}
+    var fd=new FormData();fd.append("photo",file);
+    fetch("/analyze-watch",{method:"POST",body:fd})
+      .then(function(r){return r.text().then(function(t){return{ok:r.ok,status:r.status,text:t}})})
+      .then(function(r){
+        if(!r.ok){var m="Server error "+r.status;try{m=JSON.parse(r.text).error||m}catch(e){}throw new Error(m);}
+        var data=JSON.parse(r.text);
+        if(data.error)throw new Error(data.error);
+        if(data.brand&&data.brand!=="null")setForm(function(p){return Object.assign({},p,{watch_brand:data.brand})});
+        if(data.movement&&data.movement!=="null"){
+          var det=data.movement.toUpperCase().trim();
+          var price=MOVEMENTS[det];
+          if(price){var rv={id:"mv",label:"Movement: "+det+" (Scanned)",price:price};setMvResult(rv);setMvError(false);recalc(services,rv,customs);alert("Scan complete!
+Brand: "+(data.brand||"—")+"
+Movement: "+det+" — $"+price);}
+          else{setMvSearch(det);setMvError(true);alert('Movement "'+det+'" not in price list — add as custom item.');}
+        } else if(data.brand&&data.brand!=="null"){
+          alert("Brand: "+data.brand+"
+No movement visible — enter manually.");
+        } else {
+          alert("Couldn't read caseback. Try closer / better lighting.");
+        }
+      })
+      .catch(function(err){alert("Scan failed: "+err.message);})
+      .finally(function(){setScanning(false);if(fileRef.current)fileRef.current.value="";});
   }
 
-  const allItems=[...services,...(mvResult?[mvResult]:[]),...customs];
-  const total=allItems.reduce((s,i)=>s+i.price,0);
-  const btn={border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:14,fontWeight:600};
+  var allItems=services.concat(mvResult?[mvResult]:[]).concat(customs);
+  var total=allItems.reduce(function(s,i){return s+i.price},0);
+  var btn={border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:14,fontWeight:600};
 
-  return (
-    <div style={{padding:"20px 16px",maxWidth:800}}>
-      <h1 style={{margin:"0 0 20px",fontSize:24}}>New Repair Ticket</h1>
-      <input type="file" accept="image/*" capture="environment" ref={fileRef} style={{display:"none"}} onChange={handlePhoto} />
-
-      <div style={{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}}>
-        <div style={{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:14}}>CUSTOMER & WATCH DETAILS</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          {[["team_member","Team Member","text"],["customer_name","Customer Name","text"],["phone","Phone","tel"]].map(([k,l,t])=>(
-            <div key={k}>
-              <label style={{fontSize:11,color:"#fff4",letterSpacing:".07em",display:"block",marginBottom:5}}>{l.toUpperCase()}</label>
-              <input type={t} value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} style={iStyle} />
-            </div>
-          ))}
-          <div>
-            <label style={{fontSize:11,color:"#fff4",letterSpacing:".07em",display:"block",marginBottom:5}}>BRAND / WATCH</label>
-            <div style={{display:"flex",gap:8}}>
-              <input type="text" value={form.watch_brand} onChange={e=>setForm(p=>({...p,watch_brand:e.target.value}))} style={{...iStyle,flex:1}} />
-              <button onClick={()=>fileRef.current?.click()} disabled={scanning}
-                style={{background:scanning?"#6b7280":"#10b981",color:"#fff",border:"none",borderRadius:10,padding:"0 12px",cursor:scanning?"not-allowed":"pointer",fontWeight:700,fontSize:16}}>
-                {scanning?"⏳":"📸"}
-              </button>
-            </div>
-          </div>
-          <div>
-            <label style={{fontSize:11,color:"#fff4",letterSpacing:".07em",display:"block",marginBottom:5}}>EST. READY</label>
-            <input type="date" value={form.estimated_ready} onChange={e=>setForm(p=>({...p,estimated_ready:e.target.value}))} style={iStyle} />
-          </div>
-          <div>
-            <label style={{fontSize:11,color:"#fff4",letterSpacing:".07em",display:"block",marginBottom:5}}>STATUS</label>
-            <select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))} style={{...iStyle,cursor:"pointer"}}>
-              {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div style={{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}}>
-        <div style={{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:16}}>JOB BUILDER</div>
-        {Object.entries(CAT_LABELS).map(([cat,catLabel])=>(
-          <div key={cat} style={{marginBottom:16}}>
-            <div style={{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}}>{catLabel}</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {SERVICES.filter(s=>s.cat===cat).map(svc=>{
-                const active=services.find(s=>s.id===svc.id);
-                return <button key={svc.id} onClick={()=>toggleSvc(svc)}
-                  style={{...btn,background:active?"#c9a84c":"#fff1",color:active?"#1a1a2e":"#fff",border:active?"none":"1px solid #fff2"}}>
-                  {svc.label} <span style={{opacity:.7,marginLeft:4}}>{svc.quoted?"(Quote)":"$"+svc.price}</span>
-                </button>;
-              })}
-            </div>
-          </div>
-        ))}
-        <div style={{borderTop:"1px solid #fff1",paddingTop:16,marginBottom:16}}>
-          <div style={{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}}>MOVEMENT REPLACEMENT</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-            <input placeholder="e.g. 7N42, NH35, 2824-2…" value={mvSearch} onChange={e=>{setMvSearch(e.target.value);setMvError(false);}} onKeyDown={e=>e.key==="Enter"&&searchMv()} style={{...iStyle,maxWidth:260}} />
-            <button onClick={searchMv} style={{...btn,background:"#fff2",color:"#fff",padding:"10px 16px"}}>Search</button>
-            {mvResult && <div style={{display:"flex",alignItems:"center",gap:8,background:"#c9a84c20",border:"1px solid #c9a84c50",borderRadius:10,padding:"8px 12px"}}>
-              <span style={{color:"#c9a84c",fontWeight:700,fontSize:13}}>{mvResult.label} — ${mvResult.price}</span>
-              <button onClick={removeMv} style={{background:"transparent",border:"none",color:"#c9a84c",cursor:"pointer",fontSize:18}}>×</button>
-            </div>}
-          </div>
-          {mvError && <div style={{color:"#ef4444",fontSize:13,marginTop:6}}>Not found — add as custom item below</div>}
-        </div>
-        <div style={{borderTop:"1px solid #fff1",paddingTop:16}}>
-          <div style={{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}}>ADD CUSTOM ITEM</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <input placeholder="Description" value={cLabel} onChange={e=>setCLabel(e.target.value)} style={{...iStyle,flex:2,minWidth:160}} />
-            <input placeholder="Price $" type="number" value={cPrice} onChange={e=>setCPrice(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCustom()} style={{...iStyle,width:90}} />
-            <button onClick={addCustom} style={{...btn,background:"#fff2",color:"#fff",padding:"10px 16px"}}>Add</button>
-          </div>
-          {customs.length>0 && <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:6}}>
-            {customs.map(item=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,background:"#fff1",border:"1px solid #fff2",borderRadius:8,padding:"5px 10px"}}>
-              <span style={{fontSize:13}}>{item.label} — ${item.price}</span>
-              <button onClick={()=>removeCustom(item.id)} style={{background:"transparent",border:"none",color:"#fff6",cursor:"pointer",fontSize:15}}>×</button>
-            </div>)}
-          </div>}
-        </div>
-      </div>
-
-      {allItems.length>0 && <div style={{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}}>
-        <div style={{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:12}}>QUOTE BREAKDOWN</div>
-        {allItems.map((item,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #fff1",fontSize:14}}>
-            <span style={{color:"#fff9"}}>{item.label}</span>
-            <span style={{fontWeight:600}}>${item.price}</span>
-          </div>
-        ))}
-        <div style={{display:"flex",justifyContent:"space-between",padding:"12px 0 0",fontSize:20,fontWeight:700}}>
-          <span style={{color:"#fff6"}}>TOTAL</span>
-          <span style={{color:"#c9a84c"}}>${total}</span>
-        </div>
-      </div>}
-
-      <div style={{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}}>
-        <div style={{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:10}}>NOTES</div>
-        <textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Any workshop notes…" style={{...iStyle,minHeight:70,resize:"vertical"}} />
-      </div>
-
-      <button onClick={onSave} disabled={saving}
-        style={{background:saving?"#6b7280":"#c9a84c",color:"#1a1a2e",border:"none",padding:"13px 28px",borderRadius:12,cursor:saving?"not-allowed":"pointer",fontWeight:700,fontSize:15}}>
-        {saving?"Saving…":"Create Ticket & Print →"}
-      </button>
-    </div>
+  return h("div",{style:{padding:"20px 16px",maxWidth:800}},
+    h("h1",{style:{margin:"0 0 20px",fontSize:24}},"New Repair Ticket"),
+    h("input",{type:"file",accept:"image/*",capture:"environment",ref:fileRef,style:{display:"none"},onChange:handlePhoto}),
+    h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
+      h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:14}},"CUSTOMER & WATCH DETAILS"),
+      h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+        [["team_member","Team Member","text"],["customer_name","Customer Name","text"],["phone","Phone","tel"]].map(function(x){
+          return h("div",{key:x[0]},
+            h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},x[1].toUpperCase()),
+            h("input",{type:x[2],value:form[x[0]],onChange:function(e){var k=x[0];setForm(function(p){var o=Object.assign({},p);o[k]=e.target.value;return o})},style:iStyle})
+          );
+        }),
+        h("div",null,
+          h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"BRAND / WATCH"),
+          h("div",{style:{display:"flex",gap:8}},
+            h("input",{type:"text",value:form.watch_brand,onChange:function(e){setForm(function(p){return Object.assign({},p,{watch_brand:e.target.value})})},style:Object.assign({},iStyle,{flex:1})}),
+            h("button",{onClick:function(){fileRef.current&&fileRef.current.click()},disabled:scanning,style:{background:scanning?"#6b7280":"#10b981",color:"#fff",border:"none",borderRadius:10,padding:"0 12px",cursor:scanning?"not-allowed":"pointer",fontWeight:700,fontSize:16}},scanning?"⏳":"📸")
+          )
+        ),
+        h("div",null,
+          h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"EST. READY"),
+          h("input",{type:"date",value:form.estimated_ready,onChange:function(e){setForm(function(p){return Object.assign({},p,{estimated_ready:e.target.value})})},style:iStyle})
+        ),
+        h("div",null,
+          h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"STATUS"),
+          h("select",{value:form.status,onChange:function(e){setForm(function(p){return Object.assign({},p,{status:e.target.value})})},style:Object.assign({},iStyle,{cursor:"pointer"})},
+            ALL_STATUSES.map(function(s){return h("option",{key:s,value:s},s)})
+          )
+        )
+      )
+    ),
+    h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
+      h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:16}},"JOB BUILDER"),
+      Object.entries(CAT_LABELS).map(function(entry){
+        var cat=entry[0],catLabel=entry[1];
+        return h("div",{key:cat,style:{marginBottom:16}},
+          h("div",{style:{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}},catLabel),
+          h("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+            SERVICES.filter(function(s){return s.cat===cat}).map(function(svc){
+              var active=services.find(function(s){return s.id===svc.id});
+              return h("button",{key:svc.id,onClick:function(){toggleSvc(svc)},style:Object.assign({},btn,{background:active?"#c9a84c":"#fff1",color:active?"#1a1a2e":"#fff",border:active?"none":"1px solid #fff2"})},
+                svc.label+" ",h("span",{style:{opacity:.7,marginLeft:4}},svc.quoted?"(Quote)":"$"+svc.price)
+              );
+            })
+          )
+        );
+      }),
+      h("div",{style:{borderTop:"1px solid #fff1",paddingTop:16,marginBottom:16}},
+        h("div",{style:{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}},"MOVEMENT REPLACEMENT"),
+        h("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
+          h("input",{placeholder:"e.g. NH35, 7N42, 2824-2…",value:mvSearch,onChange:function(e){setMvSearch(e.target.value);setMvError(false)},onKeyDown:function(e){if(e.key==="Enter")searchMv()},style:Object.assign({},iStyle,{maxWidth:260})}),
+          h("button",{onClick:searchMv,style:Object.assign({},btn,{background:"#fff2",color:"#fff",padding:"10px 16px"})},"Search"),
+          mvResult&&h("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#c9a84c20",border:"1px solid #c9a84c50",borderRadius:10,padding:"8px 12px"}},
+            h("span",{style:{color:"#c9a84c",fontWeight:700,fontSize:13}},mvResult.label+" — $"+mvResult.price),
+            h("button",{onClick:removeMv,style:{background:"transparent",border:"none",color:"#c9a84c",cursor:"pointer",fontSize:18}},"×")
+          )
+        ),
+        mvError&&h("div",{style:{color:"#ef4444",fontSize:13,marginTop:6}},"Not found — add as custom item below")
+      ),
+      h("div",{style:{borderTop:"1px solid #fff1",paddingTop:16}},
+        h("div",{style:{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}},"ADD CUSTOM ITEM"),
+        h("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          h("input",{placeholder:"Description",value:cLabel,onChange:function(e){setCLabel(e.target.value)},style:Object.assign({},iStyle,{flex:2,minWidth:160})}),
+          h("input",{placeholder:"Price $",type:"number",value:cPrice,onChange:function(e){setCPrice(e.target.value)},onKeyDown:function(e){if(e.key==="Enter")addCustom()},style:Object.assign({},iStyle,{width:90})}),
+          h("button",{onClick:addCustom,style:Object.assign({},btn,{background:"#fff2",color:"#fff",padding:"10px 16px"})},"Add")
+        ),
+        customs.length>0&&h("div",{style:{marginTop:10,display:"flex",flexWrap:"wrap",gap:6}},
+          customs.map(function(item){
+            return h("div",{key:item.id,style:{display:"flex",alignItems:"center",gap:8,background:"#fff1",border:"1px solid #fff2",borderRadius:8,padding:"5px 10px"}},
+              h("span",{style:{fontSize:13}},item.label+" — $"+item.price),
+              h("button",{onClick:function(){removeCustom(item.id)},style:{background:"transparent",border:"none",color:"#fff6",cursor:"pointer",fontSize:15}},"×")
+            );
+          })
+        )
+      )
+    ),
+    allItems.length>0&&h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
+      h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:12}},"QUOTE BREAKDOWN"),
+      allItems.map(function(item,i){
+        return h("div",{key:i,style:{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #fff1",fontSize:14}},
+          h("span",{style:{color:"#fff9"}},item.label),
+          h("span",{style:{fontWeight:600}},"$"+item.price)
+        );
+      }),
+      h("div",{style:{display:"flex",justifyContent:"space-between",padding:"12px 0 0",fontSize:20,fontWeight:700}},
+        h("span",{style:{color:"#fff6"}},"TOTAL"),
+        h("span",{style:{color:"#c9a84c"}},"$"+total)
+      )
+    ),
+    h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
+      h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"NOTES"),
+      h("textarea",{value:form.notes,onChange:function(e){setForm(function(p){return Object.assign({},p,{notes:e.target.value})})},placeholder:"Any workshop notes…",style:Object.assign({},iStyle,{minHeight:70,resize:"vertical"})})
+    ),
+    h("button",{onClick:onSave,disabled:saving,style:{background:saving?"#6b7280":"#c9a84c",color:"#1a1a2e",border:"none",padding:"13px 28px",borderRadius:12,cursor:saving?"not-allowed":"pointer",fontWeight:700,fontSize:15}},saving?"Saving…":"Create Ticket & Print →")
   );
 }
 
-function CustomerPage({ repair, onBack }) {
-  const cfg=STATUS_CONFIG[repair.status]||{color:"#6B7280",bg:"#F9FAFB"};
-  return (
-    <div style={{minHeight:"100vh",background:"#f8f7f4"}}>
-      <div style={{background:"#1a1a2e",padding:"20px 24px",display:"flex",alignItems:"center",gap:16}}>
-        <div style={{color:"#c9a84c",fontSize:22,fontWeight:700,letterSpacing:".1em"}}>⌚ CHRONO</div>
-        <div style={{color:"#fff6",fontSize:13}}>REPAIR STUDIO</div>
-        {onBack && <button onClick={onBack} style={{marginLeft:"auto",background:"transparent",border:"1px solid #fff4",color:"#fff",padding:"6px 16px",borderRadius:6,cursor:"pointer",fontSize:13}}>← Staff</button>}
-      </div>
-      <div style={{maxWidth:540,margin:"0 auto",padding:"32px 20px"}}>
-        <div style={{background:"#fff",borderRadius:16,padding:28,marginBottom:20,boxShadow:"0 2px 12px #0001",textAlign:"center"}}>
-          <div style={{fontSize:12,color:"#9ca3af",letterSpacing:".08em",marginBottom:6}}>REPAIR TICKET</div>
-          <div style={{fontSize:26,fontWeight:700,color:"#1a1a2e",marginBottom:4}}>{repair.id}</div>
-          <div style={{fontSize:15,color:"#374151",marginBottom:20}}>{repair.watch_brand}</div>
-          <div style={{background:cfg.bg,border:`2px solid ${cfg.color}40`,borderRadius:12,padding:"14px 20px",marginBottom:16}}>
-            <div style={{fontSize:11,color:cfg.color,letterSpacing:".1em",marginBottom:4}}>CURRENT STATUS</div>
-            <div style={{fontSize:20,fontWeight:700,color:cfg.color}}>{repair.status}</div>
-          </div>
-          {repair.status==="Ready for Collection" && <div style={{background:"#ecfdf5",border:"1px solid #10b98140",borderRadius:10,padding:14,marginBottom:12,fontSize:14,color:"#065f46"}}>🎉 Your watch is ready! Bring this ticket when collecting.</div>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,textAlign:"left"}}>
-            <div style={{background:"#f9fafb",borderRadius:8,padding:12}}><div style={{fontSize:11,color:"#9ca3af"}}>RECEIVED</div><div style={{fontSize:14,fontWeight:600,marginTop:2}}>{repair.received_date}</div></div>
-            <div style={{background:"#f9fafb",borderRadius:8,padding:12}}><div style={{fontSize:11,color:"#9ca3af"}}>EST. READY</div><div style={{fontSize:14,fontWeight:600,marginTop:2}}>{repair.estimated_ready||"TBC"}</div></div>
-          </div>
-        </div>
-        {repair.issue && <div style={{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}}>
-          <div style={{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:12}}>WORK BEING DONE</div>
-          <div style={{fontSize:14,color:"#374151",lineHeight:1.7}}>{repair.issue}</div>
-        </div>}
-        {(repair.history||[]).length>0 && <div style={{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}}>
-          <div style={{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:20}}>HISTORY</div>
-          {repair.history.map((h,i)=>(
-            <div key={i} style={{display:"flex",gap:12,marginBottom:i<repair.history.length-1?14:0}}>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-                <div style={{width:9,height:9,borderRadius:"50%",background:i===repair.history.length-1?"#c9a84c":"#d1d5db",flexShrink:0,marginTop:3}} />
-                {i<repair.history.length-1 && <div style={{width:1,flex:1,background:"#e5e7eb",minHeight:18,marginTop:3}} />}
-              </div>
-              <div><div style={{fontSize:11,color:"#9ca3af"}}>{h.date}</div><div style={{fontSize:13,color:"#374151"}}>{h.event}</div></div>
-            </div>
-          ))}
-        </div>}
-        <div style={{textAlign:"center",color:"#9ca3af",fontSize:12}}>Questions? Call us on 03 9123 4567</div>
-      </div>
-    </div>
+function CustomerPage(repair,onBack){
+  var cfg=STATUS_CONFIG[repair.status]||{color:"#6B7280",bg:"#F9FAFB"};
+  return h("div",{style:{minHeight:"100vh",background:"#f8f7f4"}},
+    h("div",{style:{background:"#1a1a2e",padding:"20px 24px",display:"flex",alignItems:"center",gap:16}},
+      h("div",{style:{color:"#c9a84c",fontSize:22,fontWeight:700,letterSpacing:".1em"}},"⌚ CHRONO"),
+      h("div",{style:{color:"#fff6",fontSize:13}},"REPAIR STUDIO"),
+      onBack&&h("button",{onClick:onBack,style:{marginLeft:"auto",background:"transparent",border:"1px solid #fff4",color:"#fff",padding:"6px 16px",borderRadius:6,cursor:"pointer",fontSize:13}},"← Staff")
+    ),
+    h("div",{style:{maxWidth:540,margin:"0 auto",padding:"32px 20px"}},
+      h("div",{style:{background:"#fff",borderRadius:16,padding:28,marginBottom:20,boxShadow:"0 2px 12px #0001",textAlign:"center"}},
+        h("div",{style:{fontSize:12,color:"#9ca3af",letterSpacing:".08em",marginBottom:6}},"REPAIR TICKET"),
+        h("div",{style:{fontSize:26,fontWeight:700,color:"#1a1a2e",marginBottom:4}},repair.id),
+        h("div",{style:{fontSize:15,color:"#374151",marginBottom:20}},repair.watch_brand),
+        h("div",{style:{background:cfg.bg,border:"2px solid "+cfg.color+"40",borderRadius:12,padding:"14px 20px",marginBottom:16}},
+          h("div",{style:{fontSize:11,color:cfg.color,letterSpacing:".1em",marginBottom:4}},"CURRENT STATUS"),
+          h("div",{style:{fontSize:20,fontWeight:700,color:cfg.color}},repair.status)
+        ),
+        repair.status==="Ready for Collection"&&h("div",{style:{background:"#ecfdf5",border:"1px solid #10b98140",borderRadius:10,padding:14,marginBottom:12,fontSize:14,color:"#065f46"}},"🎉 Your watch is ready! Please bring this ticket."),
+        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,textAlign:"left"}},
+          h("div",{style:{background:"#f9fafb",borderRadius:8,padding:12}},h("div",{style:{fontSize:11,color:"#9ca3af"}},"RECEIVED"),h("div",{style:{fontSize:14,fontWeight:600,marginTop:2}},repair.received_date)),
+          h("div",{style:{background:"#f9fafb",borderRadius:8,padding:12}},h("div",{style:{fontSize:11,color:"#9ca3af"}},"EST. READY"),h("div",{style:{fontSize:14,fontWeight:600,marginTop:2}},repair.estimated_ready||"TBC"))
+        )
+      ),
+      repair.issue&&h("div",{style:{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}},
+        h("div",{style:{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:12}},"WORK BEING DONE"),
+        h("div",{style:{fontSize:14,color:"#374151",lineHeight:1.7}},repair.issue)
+      ),
+      (repair.history||[]).length>0&&h("div",{style:{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}},
+        h("div",{style:{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:20}},"HISTORY"),
+        repair.history.map(function(hh,i){
+          return h("div",{key:i,style:{display:"flex",gap:12,marginBottom:i<repair.history.length-1?14:0}},
+            h("div",{style:{display:"flex",flexDirection:"column",alignItems:"center"}},
+              h("div",{style:{width:9,height:9,borderRadius:"50%",background:i===repair.history.length-1?"#c9a84c":"#d1d5db",flexShrink:0,marginTop:3}}),
+              i<repair.history.length-1&&h("div",{style:{width:1,flex:1,background:"#e5e7eb",minHeight:18,marginTop:3}})
+            ),
+            h("div",null,h("div",{style:{fontSize:11,color:"#9ca3af"}},hh.date),h("div",{style:{fontSize:13,color:"#374151"}},hh.event))
+          );
+        })
+      ),
+      h("div",{style:{textAlign:"center",color:"#9ca3af",fontSize:12}},"Questions? Call us on 03 9123 4567")
+    )
   );
 }
 
-function App() {
-  const [repairs,setRepairs]           = useState([]);
-  const [loading,setLoading]           = useState(true);
-  const [error,setError]               = useState(null);
-  const [view,setView]                 = useState("dashboard");
-  const [selected,setSelected]         = useState(null);
-  const [search,setSearch]             = useState("");
-  const [filterStatus,setFilterStatus] = useState("All");
-  const [saving,setSaving]             = useState(false);
-  const [notification,setNotification] = useState(null);
-  const [quoteModal,setQuoteModal]     = useState(null);
-  const [noteInput,setNoteInput]       = useState("");
-  const [scanInput,setScanInput]       = useState("");
-  const [scanResult,setScanResult]     = useState(null);
-  const [scanError,setScanError]       = useState(false);
-  const emptyForm = {team_member:"",customer_name:"",phone:"",watch_brand:"",issue:"",cost_to_business:"",quote:"",estimated_ready:"",status:"Go Ahead",notes:""};
-  const [form,setForm] = useState(emptyForm);
+function App(){
+  var _1=useState([]),repairs=_1[0],setRepairs=_1[1];
+  var _2=useState(true),loading=_2[0],setLoading=_2[1];
+  var _3=useState(null),error=_3[0],setError=_3[1];
+  var _4=useState("dashboard"),view=_4[0],setView=_4[1];
+  var _5=useState(null),selected=_5[0],setSelected=_5[1];
+  var _6=useState(""),search=_6[0],setSearch=_6[1];
+  var _7=useState("All"),filterStatus=_7[0],setFilterStatus=_7[1];
+  var _8=useState(false),saving=_8[0],setSaving=_8[1];
+  var _9=useState(null),notification=_9[0],setNotification=_9[1];
+  var _10=useState(null),quoteModal=_10[0],setQuoteModal=_10[1];
+  var _11=useState(""),noteInput=_11[0],setNoteInput=_11[1];
+  var _12=useState(""),scanInput=_12[0],setScanInput=_12[1];
+  var _13=useState(null),scanResult=_13[0],setScanResult=_13[1];
+  var _14=useState(false),scanError=_14[0],setScanError=_14[1];
+  var emptyForm={team_member:"",customer_name:"",phone:"",watch_brand:"",issue:"",cost_to_business:"",quote:"",estimated_ready:"",status:"Go Ahead",notes:""};
+  var _15=useState(emptyForm),form=_15[0],setForm=_15[1];
 
-  useEffect(()=>{
-    const p=new URLSearchParams(window.location.search);
-    const action=p.get("action"),repairId=p.get("repair"),response=p.get("response");
-    if(action==="respond"&&repairId&&response) doCustomerResponse(repairId,response);
-    else if(repairId) loadOne(repairId);
+  useEffect(function(){
+    var p=new URLSearchParams(window.location.search);
+    var action=p.get("action"),repairId=p.get("repair"),response=p.get("response");
+    if(action==="respond"&&repairId&&response)doCustomerResponse(repairId,response);
+    else if(repairId)loadOne(repairId);
     else load();
   },[]);
 
-  async function doCustomerResponse(repairId,response) {
+  function doCustomerResponse(repairId,response){
     setView("responding");
-    try {
-      const res=await fetch("/customer-respond",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId,response})});
-      const data=await res.json(); if(!res.ok) throw new Error(data.error);
-      setView("response_done"); setSelected({id:repairId,status:data.status,response});
-    } catch(e){ setView("response_error"); }
+    fetch("/customer-respond",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId:repairId,response:response})})
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+      .then(function(r){
+        if(!r.ok)throw new Error(r.data.error);
+        setView("response_done");setSelected({id:repairId,status:r.data.status,response:response});
+      })
+      .catch(function(){setView("response_error");});
   }
 
-  async function load() {
-    try { setLoading(true); setError(null);
-      setRepairs(await sbFetch("repairs?order=received_date.desc.nullslast,id.desc"));
-    } catch(e){ setError("Could not connect: "+e.message); }
-    finally { setLoading(false); }
+  function load(){
+    setLoading(true);setError(null);
+    sbFetch("repairs?order=received_date.desc.nullslast,id.desc")
+      .then(function(d){setRepairs(d)})
+      .catch(function(e){setError("Could not connect: "+e.message)})
+      .finally(function(){setLoading(false)});
   }
 
-  async function loadOne(id) {
-    try { const d=await sbFetch("repairs?id=eq."+encodeURIComponent(id));
-      if(d.length){setSelected(d[0]);setView("customer");}
-    } catch(e){}
-    finally { setLoading(false); }
+  function loadOne(id){
+    sbFetch("repairs?id=eq."+encodeURIComponent(id))
+      .then(function(d){if(d.length){setSelected(d[0]);setView("customer")}})
+      .catch(function(){})
+      .finally(function(){setLoading(false)});
   }
 
-  async function saveRepair() {
-    try {
-      setSaving(true);
-      const id="WR-"+Date.now(), today=new Date().toISOString().slice(0,10);
-      const rec={...form,id,received_date:today,cost_to_business:parseFloat(form.cost_to_business)||null,quote:parseFloat(form.quote)||null,history:[{date:today,event:"Watch received and logged"}]};
-      await sbFetch("repairs",{method:"POST",body:JSON.stringify(rec),prefer:"return=representation"});
-      await load();
-      const saved=await sbFetch("repairs?id=eq."+id);
-      if(saved.length) printTicket(saved[0]);
-      setView("dashboard"); setForm(emptyForm);
-    } catch(e){ alert("Error saving: "+e.message); }
-    finally { setSaving(false); }
+  function saveRepair(){
+    setSaving(true);
+    var id="WR-"+Date.now(),today=new Date().toISOString().slice(0,10);
+    var rec=Object.assign({},form,{id:id,received_date:today,cost_to_business:parseFloat(form.cost_to_business)||null,quote:parseFloat(form.quote)||null,history:[{date:today,event:"Watch received and logged"}]});
+    sbFetch("repairs",{method:"POST",body:JSON.stringify(rec),prefer:"return=representation"})
+      .then(function(){return load()})
+      .then(function(){return sbFetch("repairs?id=eq."+id)})
+      .then(function(saved){if(saved.length)printTicket(saved[0]);setView("dashboard");setForm(emptyForm);})
+      .catch(function(e){alert("Error saving: "+e.message)})
+      .finally(function(){setSaving(false)});
   }
 
-  async function changeStatus(id,status) {
-    try {
-      const today=new Date().toISOString().slice(0,10);
-      const r=repairs.find(x=>x.id===id)||selected;
-      const history=[...(r.history||[]),{date:today,event:"Status: "+status}];
-      await sbFetch(`repairs?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify({status,history}),prefer:"return=representation"});
-      setSelected(p=>p?{...p,status,history}:p);
-      setRepairs(p=>p.map(r=>r.id===id?{...r,status,history}:r));
-    } catch(e){ alert("Error: "+e.message); }
+  function changeStatus(id,status){
+    var today=new Date().toISOString().slice(0,10);
+    var r=repairs.find(function(x){return x.id===id})||selected;
+    var history=(r.history||[]).concat([{date:today,event:"Status: "+status}]);
+    sbFetch("repairs?id=eq."+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({status:status,history:history}),prefer:"return=representation"})
+      .then(function(){
+        setSelected(function(p){return p?Object.assign({},p,{status:status,history:history}):p});
+        setRepairs(function(p){return p.map(function(r){return r.id===id?Object.assign({},r,{status:status,history:history}):r})});
+      })
+      .catch(function(e){alert("Error: "+e.message)});
   }
 
-  async function addNote(id,note) {
-    if(!note.trim()) return;
-    try {
-      const today=new Date().toISOString().slice(0,10);
-      const r=repairs.find(x=>x.id===id)||selected;
-      const notes=(r.notes?r.notes+"
+  function addNote(id,note){
+    if(!note.trim())return;
+    var today=new Date().toISOString().slice(0,10);
+    var r=repairs.find(function(x){return x.id===id})||selected;
+    var notes=(r.notes?r.notes+"
 ":"")+note;
-      const history=[...(r.history||[]),{date:today,event:note}];
-      await sbFetch(`repairs?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",body:JSON.stringify({notes,history}),prefer:"return=representation"});
-      setSelected(p=>p?{...p,notes,history}:p);
-      setRepairs(p=>p.map(r=>r.id===id?{...r,notes,history}:r));
-      setNoteInput("");
-    } catch(e){ alert("Error: "+e.message); }
+    var history=(r.history||[]).concat([{date:today,event:note}]);
+    sbFetch("repairs?id=eq."+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({notes:notes,history:history}),prefer:"return=representation"})
+      .then(function(){
+        setSelected(function(p){return p?Object.assign({},p,{notes:notes,history:history}):p});
+        setRepairs(function(p){return p.map(function(r){return r.id===id?Object.assign({},r,{notes:notes,history:history}):r})});
+        setNoteInput("");
+      })
+      .catch(function(e){alert("Error: "+e.message)});
   }
 
-  async function sendQuote(repairId,quote,message) {
-    try {
-      const res=await fetch("/send-quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId,quote:parseFloat(quote),message})});
-      const data=await res.json(); if(!res.ok) throw new Error(data.error);
-      setNotification({type:"success",msg:"Quote SMS sent!"});
-      setQuoteModal(null); await load();
-      setTimeout(()=>setNotification(null),4000);
-    } catch(e){
-      setNotification({type:"error",msg:"Failed: "+e.message});
-      setTimeout(()=>setNotification(null),5000);
-    }
+  function sendQuote(repairId,quote,message){
+    return fetch("/send-quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId:repairId,quote:parseFloat(quote),message:message})})
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+      .then(function(r){
+        if(!r.ok)throw new Error(r.data.error);
+        setNotification({type:"success",msg:"Quote SMS sent!"});
+        setQuoteModal(null);load();
+        setTimeout(function(){setNotification(null)},4000);
+      })
+      .catch(function(e){
+        setNotification({type:"error",msg:"Failed: "+e.message});
+        setTimeout(function(){setNotification(null)},5000);
+      });
   }
 
-  function scan() {
-    const q=scanInput.trim().toLowerCase();
-    const found=repairs.find(r=>r.id.toLowerCase()===q||(r.phone&&r.phone.replace(/\s/g,"").includes(q.replace(/\s/g,""))));
+  function scan(){
+    var q=scanInput.trim().toLowerCase();
+    var found=repairs.find(function(r){return r.id.toLowerCase()===q||(r.phone&&r.phone.replace(/\s/g,"").includes(q.replace(/\s/g,"")))});
     if(found){setScanResult(found);setScanError(false);}
     else{setScanResult(null);setScanError(true);}
   }
 
-  function deadlineBadge(d) {
-    if(!d) return null;
-    const days=Math.floor((new Date()-new Date(d))/86400000);
-    if(days>=9) return {label:`${days}d ⚠️ OVERDUE`,color:"#ef4444",bg:"#1a0000"};
-    if(days>=6) return {label:`${days}d ⚡ Due soon`,color:"#f59e0b",bg:"#1a1200"};
+  function deadlineBadge(d){
+    if(!d)return null;
+    var days=Math.floor((new Date()-new Date(d))/86400000);
+    if(days>=9)return{label:days+"d ⚠️ OVERDUE",color:"#ef4444",bg:"#1a0000"};
+    if(days>=6)return{label:days+"d ⚡ Due soon",color:"#f59e0b",bg:"#1a1200"};
     return null;
   }
 
-  const filtered=repairs.filter(r=>{
-    const q=search.toLowerCase();
-    return (!q||(r.customer_name||"").toLowerCase().includes(q)||(r.id||"").toLowerCase().includes(q)||(r.watch_brand||"").toLowerCase().includes(q)||(r.phone||"").includes(q))
+  var filtered=repairs.filter(function(r){
+    var q=search.toLowerCase();
+    return(!q||(r.customer_name||"").toLowerCase().includes(q)||(r.id||"").toLowerCase().includes(q)||(r.watch_brand||"").toLowerCase().includes(q)||(r.phone||"").includes(q))
       &&(filterStatus==="All"||r.status===filterStatus);
   });
-  const counts=ALL_STATUSES.reduce((a,s)=>({...a,[s]:repairs.filter(r=>r.status===s).length}),{});
-  const iStyle={width:"100%",background:"#0f0f1a",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"10px 14px",fontSize:15,boxSizing:"border-box",outline:"none"};
+  var counts=ALL_STATUSES.reduce(function(a,s){a[s]=repairs.filter(function(r){return r.status===s}).length;return a},{});
+  var iStyle={width:"100%",background:"#0f0f1a",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"10px 14px",fontSize:15,boxSizing:"border-box",outline:"none"};
 
-  if(view==="customer"&&selected) return <CustomerPage repair={selected} onBack={()=>setView("detail")} />;
-  if(view==="responding") return <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}}><div style={{textAlign:"center",color:"#fff6"}}>⏳ Processing…</div></div>;
-  if((view==="response_done"||view==="response_error")&&selected) return (
-    <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",background:"#f8f7f4",minHeight:"100vh"}}>
-      <div style={{background:"#fff",borderRadius:20,padding:40,maxWidth:420,textAlign:"center",boxShadow:"0 4px 24px #0001"}}>
-        <div style={{fontSize:48,marginBottom:16}}>{view==="response_error"?"❌":selected.response==="go"?"✅":"❌"}</div>
-        <div style={{fontSize:24,fontWeight:700,color:"#1a1a2e",marginBottom:12}}>{view==="response_error"?"Something went wrong":selected.response==="go"?"Go Ahead Confirmed!":"No Problem!"}</div>
-        <div style={{fontSize:15,color:"#6b7280",lineHeight:1.7}}>{view==="response_error"?"Couldn't record response. Please call us.":selected.response==="go"?"We'll get started on your repair!":"We've noted your decision."}</div>
-        <div style={{marginTop:24,fontSize:13,color:"#9ca3af"}}>⌚ Chrono Repair Studio</div>
-      </div>
-    </div>
+  if(view==="customer"&&selected)return CustomerPage(selected,function(){setView("detail")});
+  if(view==="responding")return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}},h("div",{style:{color:"#fff6"}},"⏳ Processing…"));
+  if((view==="response_done"||view==="response_error")&&selected)return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",background:"#f8f7f4",minHeight:"100vh"}},
+    h("div",{style:{background:"#fff",borderRadius:20,padding:40,maxWidth:420,textAlign:"center"}},
+      h("div",{style:{fontSize:48,marginBottom:16}},view==="response_error"?"❌":selected.response==="go"?"✅":"❌"),
+      h("div",{style:{fontSize:24,fontWeight:700,color:"#1a1a2e",marginBottom:12}},view==="response_error"?"Something went wrong":selected.response==="go"?"Go Ahead Confirmed!":"No Problem!"),
+      h("div",{style:{fontSize:15,color:"#6b7280"}},view==="response_error"?"Couldn't record response.":selected.response==="go"?"We'll get started on your repair!":"We've noted your decision."),
+      h("div",{style:{marginTop:24,fontSize:13,color:"#9ca3af"}},"⌚ Chrono Repair Studio")
+    )
   );
 
-  return (
-    <div style={{minHeight:"100vh",background:"#0f0f1a",color:"#fff",display:"flex"}}>
-      {notification && <div style={{position:"fixed",top:20,right:20,zIndex:1000,background:notification.type==="success"?"#065f46":"#7f1d1d",border:`1px solid ${notification.type==="success"?"#10b981":"#ef4444"}`,color:"#fff",borderRadius:10,padding:"14px 20px",fontSize:14,fontWeight:600,boxShadow:"0 4px 20px #0005",maxWidth:340}}>
-        {notification.type==="success"?"✅ ":"❌ "}{notification.msg}
-      </div>}
-      {quoteModal && <QuoteModal repair={repairs.find(x=>x.id===quoteModal)} onSend={sendQuote} onClose={()=>setQuoteModal(null)} iStyle={iStyle} />}
-
-      <div className="sidebar">
-        <div style={{padding:"22px 18px",borderBottom:"1px solid #fff1"}}>
-          <div style={{color:"#c9a84c",fontSize:20,fontWeight:700,letterSpacing:".08em"}}>⌚ CHRONO</div>
-          <div style={{color:"#fff4",fontSize:12,letterSpacing:".1em",marginTop:2}}>REPAIR STUDIO</div>
-        </div>
-        {[{id:"dashboard",label:"Dashboard",icon:"▦"},{id:"scan",label:"Scan / Lookup",icon:"⊙"},{id:"new",label:"New Repair",icon:"+"}].map(item=>(
-          <button key={item.id} onClick={()=>{setView(item.id);setSelected(null);}}
-            style={{background:view===item.id?"#fff1":"transparent",border:"none",borderLeft:view===item.id?"3px solid #c9a84c":"3px solid transparent",color:view===item.id?"#fff":"#fff6",padding:"11px 18px",textAlign:"left",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",gap:10,width:"100%"}}>
-            <span>{item.icon}</span>{item.label}
-          </button>
-        ))}
-        <div style={{marginTop:"auto",padding:"14px 18px",borderTop:"1px solid #fff1"}}>
-          <div style={{fontSize:11,color:"#fff3",letterSpacing:".06em",marginBottom:8}}>STATUS SUMMARY</div>
-          {ALL_STATUSES.filter(s=>counts[s]>0).map(s=>(
-            <div key={s} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff5",marginBottom:3}}>
-              <span>{s}</span><span style={{color:STATUS_CONFIG[s].color,fontWeight:700}}>{counts[s]}</span>
-            </div>
-          ))}
-          <button onClick={load} style={{marginTop:12,width:"100%",background:"transparent",border:"1px solid #fff2",color:"#fff5",borderRadius:8,padding:"5px",cursor:"pointer",fontSize:11}}>↻ Refresh</button>
-        </div>
-      </div>
-
-      <div className="main-scroll" style={{flex:1,overflow:"auto"}}>
-        {view==="dashboard"&&!selected&&(
-          <div style={{padding:"20px 16px"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-              <div><h1 style={{margin:0,fontSize:22}}>Repair Jobs</h1><div style={{color:"#fff5",fontSize:14,marginTop:2}}>{repairs.length} total</div></div>
-              <button onClick={()=>setView("new")} style={{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"9px 18px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:13}}>+ New</button>
-            </div>
-            {error&&<div style={{background:"#1a1a2e",border:"1px solid #ef4444",borderRadius:10,padding:16,color:"#ef4444",marginBottom:16}}>{error}</div>}
-            <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
-              <input placeholder="Search name, ID, brand, phone…" value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:200,background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,outline:"none"}} />
-              <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} style={{background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,cursor:"pointer"}}>
-                <option value="All">All Statuses</option>
-                {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            {loading?<div style={{textAlign:"center",padding:60,color:"#fff3"}}>Loading…</div>:(<>
-              <div className="desktop-table" style={{background:"#1a1a2e",borderRadius:12,overflow:"hidden"}}>
-                <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"10px 16px",borderBottom:"1px solid #fff1",fontSize:11,color:"#fff4",letterSpacing:".07em"}}>
-                  <span>TICKET</span><span>CUSTOMER</span><span>WATCH</span><span>TEAM</span><span>STATUS</span><span>QUOTE</span><span>DATE IN</span>
-                </div>
-                {filtered.length===0&&<div style={{padding:40,textAlign:"center",color:"#fff3"}}>No repairs found</div>}
-                {filtered.map((r,i)=>{const db=deadlineBadge(r.received_date);return(
-                  <div key={r.id} onClick={()=>{setSelected(r);setView("detail");}}
-                    style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"12px 16px",cursor:"pointer",borderBottom:i<filtered.length-1?"1px solid #fff1":"none"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="#fff1"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <span style={{color:"#c9a84c",fontSize:13,fontWeight:600}}>{r.id}</span>
-                    <div><div style={{fontSize:13}}>{r.customer_name}</div><div style={{fontSize:11,color:"#fff4",marginTop:1}}>{r.phone}</div></div>
-                    <span style={{fontSize:13,color:"#fff8",alignSelf:"center"}}>{r.watch_brand}</span>
-                    <span style={{fontSize:12,color:"#fff5",alignSelf:"center"}}>{r.team_member}</span>
-                    <div style={{alignSelf:"center",display:"flex",flexDirection:"column",gap:3}}>
-                      <StatusBadge status={r.status} />
-                      {db&&<span style={{fontSize:10,fontWeight:700,color:db.color,background:db.bg,borderRadius:4,padding:"1px 5px",border:`1px solid ${db.color}40`}}>{db.label}</span>}
-                    </div>
-                    <span style={{fontSize:13,alignSelf:"center"}}>{r.quote!=null?"$"+r.quote:"—"}</span>
-                    <span style={{fontSize:11,color:"#fff5",alignSelf:"center"}}>{r.received_date||"—"}</span>
-                  </div>
-                );})}
-              </div>
-              <div className="mobile-cards">
-                {filtered.length===0&&<div style={{padding:40,textAlign:"center",color:"#fff3"}}>No repairs found</div>}
-                {filtered.map(r=>{const db=deadlineBadge(r.received_date);return(
-                  <div key={r.id} onClick={()=>{setSelected(r);setView("detail");}} style={{background:"#1a1a2e",borderRadius:12,padding:16,marginBottom:10,cursor:"pointer",border:"1px solid #fff1"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                      <span style={{color:"#c9a84c",fontSize:13,fontWeight:700}}>{r.id}</span><StatusBadge status={r.status} />
-                    </div>
-                    <div style={{fontSize:17,fontWeight:700,marginBottom:3}}>{r.customer_name||"—"}</div>
-                    <div style={{fontSize:14,color:"#fff6",marginBottom:8}}>{r.watch_brand||"—"}</div>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#fff4"}}>
-                      <span>📞 {r.phone||"—"}</span><span>{r.quote!=null?"$"+r.quote:"No quote"}</span><span>{r.received_date||"—"}</span>
-                    </div>
-                    {db&&<div style={{marginTop:8}}><span style={{fontSize:11,fontWeight:700,color:db.color,background:db.bg,borderRadius:4,padding:"2px 8px",border:`1px solid ${db.color}40`}}>{db.label}</span></div>}
-                  </div>
-                );})}
-              </div>
-            </>)}
-          </div>
-        )}
-
-        {view==="detail"&&selected&&(
-          <div style={{padding:"20px 16px",maxWidth:900}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24,flexWrap:"wrap"}}>
-              <button onClick={()=>{setSelected(null);setView("dashboard");}} style={{background:"transparent",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontSize:13}}>← Back</button>
-              <h1 style={{margin:0,fontSize:18}}>{selected.id}</h1>
-              <StatusBadge status={selected.status} />
-              <div style={{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}}>
-                {selected.phone&&<button onClick={()=>setQuoteModal(selected.id)} style={{background:"#10b981",color:"#fff",border:"none",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>💬 Quote</button>}
-                <button onClick={()=>printTicket(selected)} style={{background:"#fff2",color:"#fff",border:"1px solid #fff3",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontSize:13}}>🖨 Print</button>
-                <button onClick={()=>setView("customer")} style={{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>👁 Customer View</button>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-              <div style={{background:"#1a1a2e",borderRadius:12,padding:18}}>
-                <div style={{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}}>CUSTOMER</div>
-                <div style={{fontSize:20,fontWeight:700,marginBottom:6}}>{selected.customer_name}</div>
-                <div style={{fontSize:14,color:"#fff7",marginBottom:3}}>📞 {selected.phone||"—"}</div>
-                <div style={{fontSize:14,color:"#fff5"}}>👤 {selected.team_member||"—"}</div>
-              </div>
-              <div style={{background:"#1a1a2e",borderRadius:12,padding:18}}>
-                <div style={{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}}>WATCH</div>
-                <div style={{fontSize:20,fontWeight:700,marginBottom:6}}>{selected.watch_brand||"—"}</div>
-                <div style={{fontSize:14,color:"#fff5"}}>In: {selected.received_date}</div>
-                <div style={{fontSize:14,color:"#fff5",marginTop:3}}>Ready: {selected.estimated_ready||"TBC"}</div>
-              </div>
-              <div style={{background:"#1a1a2e",borderRadius:12,padding:18}}>
-                <div style={{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}}>FINANCIALS</div>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:"#fff6",fontSize:14}}>Cost to Business</span><span style={{fontWeight:700}}>{selected.cost_to_business!=null?"$"+selected.cost_to_business:"—"}</span></div>
-                <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"#fff6",fontSize:14}}>Quote to Customer</span><span style={{fontWeight:700,color:"#c9a84c"}}>{selected.quote!=null?"$"+selected.quote:"—"}</span></div>
-              </div>
-              <div style={{background:"#1a1a2e",borderRadius:12,padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}}>
-                <div style={{fontSize:11,color:"#fff4",letterSpacing:".08em"}}>QR CODE</div>
-                <QRCode id={selected.id} size={100} />
-                <button onClick={()=>printTicket(selected)} style={{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"6px 14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}}>🖨 Print</button>
-              </div>
-            </div>
-            {selected.issue&&<div style={{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}}>
-              <div style={{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:8}}>WORK BEING DONE</div>
-              <div style={{fontSize:14,color:"#fff9",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{selected.issue}</div>
-            </div>}
-            <div style={{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}}>
-              <div style={{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:12}}>UPDATE STATUS</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                {ALL_STATUSES.map(s=><button key={s} onClick={()=>changeStatus(selected.id,s)}
-                  style={{background:selected.status===s?STATUS_CONFIG[s].color:"transparent",border:`1px solid ${STATUS_CONFIG[s].color}`,color:selected.status===s?"#fff":STATUS_CONFIG[s].color,padding:"6px 14px",borderRadius:20,cursor:"pointer",fontSize:13,fontWeight:600}}>{s}</button>)}
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-              <div style={{background:"#1a1a2e",borderRadius:12,padding:18}}>
-                <div style={{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}}>NOTES</div>
-                <div style={{fontSize:13,color:"#fff7",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-wrap",minHeight:36}}>{selected.notes||"No notes yet."}</div>
-                <textarea placeholder="Add a note…" value={noteInput} onChange={e=>setNoteInput(e.target.value)} style={{width:"100%",background:"#0f0f1a",border:"1px solid #fff2",color:"#fff",borderRadius:8,padding:10,fontSize:13,minHeight:70,resize:"vertical",boxSizing:"border-box",outline:"none"}} />
-                <button onClick={()=>addNote(selected.id,noteInput)} style={{marginTop:8,background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"7px 16px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:13}}>Add Note</button>
-              </div>
-              <div style={{background:"#1a1a2e",borderRadius:12,padding:18}}>
-                <div style={{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:12}}>HISTORY</div>
-                {(selected.history||[]).slice().reverse().map((h,i)=>(
-                  <div key={i} style={{display:"flex",gap:10,marginBottom:10}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:i===0?"#c9a84c":"#fff2",marginTop:4,flexShrink:0}} />
-                    <div><div style={{fontSize:11,color:"#fff3"}}>{h.date}</div><div style={{fontSize:13,color:"#fff7",marginTop:1}}>{h.event}</div></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {view==="scan"&&(
-          <div style={{padding:"20px 16px",maxWidth:540}}>
-            <h1 style={{margin:"0 0 8px",fontSize:22}}>Scan / Lookup</h1>
-            <p style={{color:"#fff5",marginBottom:24,fontSize:14}}>Enter a ticket ID or phone number.</p>
-            <div style={{display:"flex",gap:10,marginBottom:20}}>
-              <input placeholder="Ticket ID or phone…" value={scanInput} onChange={e=>{setScanInput(e.target.value);setScanError(false);setScanResult(null);}} onKeyDown={e=>e.key==="Enter"&&scan()} style={{flex:1,background:"#1a1a2e",border:"1px solid #fff3",color:"#fff",borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none"}} />
-              <button onClick={scan} style={{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"0 20px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14}}>Find</button>
-            </div>
-            {scanError&&<div style={{background:"#1a1a2e",border:"1px solid #ef444450",borderRadius:10,padding:16,color:"#ef4444",fontSize:14}}>No repair found.</div>}
-            {scanResult&&<div style={{background:"#1a1a2e",borderRadius:12,padding:20}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-                <div>
-                  <div style={{color:"#c9a84c",fontSize:14,fontWeight:700}}>{scanResult.id}</div>
-                  <div style={{fontSize:20,fontWeight:700,marginTop:3}}>{scanResult.customer_name}</div>
-                  <div style={{color:"#fff6",marginTop:3}}>{scanResult.watch_brand}</div>
-                </div>
-                <StatusBadge status={scanResult.status} />
-              </div>
-              <div style={{display:"flex",gap:10}}>
-                <button onClick={()=>{setSelected(scanResult);setView("detail");}} style={{flex:1,background:"#c9a84c",color:"#1a1a2e",border:"none",padding:10,borderRadius:8,cursor:"pointer",fontWeight:700}}>Open</button>
-                <button onClick={()=>printTicket(scanResult)} style={{flex:1,background:"transparent",color:"#fff",border:"1px solid #fff3",padding:10,borderRadius:8,cursor:"pointer"}}>🖨 Print</button>
-              </div>
-            </div>}
-          </div>
-        )}
-
-        {view==="new"&&<NewRepairForm iStyle={iStyle} saving={saving} form={form} setForm={setForm} onSave={saveRepair} />}
-      </div>
-
-      <div className="bottom-nav">
-        {[{id:"dashboard",label:"Jobs",icon:"▦"},{id:"scan",label:"Lookup",icon:"⊙"},{id:"new",label:"New",icon:"+"}].map(item=>(
-          <button key={item.id} onClick={()=>{setView(item.id);setSelected(null);}}
-            style={{background:"transparent",border:"none",color:view===item.id?"#c9a84c":"#fff5",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 24px"}}>
-            <span style={{fontSize:22}}>{item.icon}</span>
-            <span style={{fontSize:11}}>{item.label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
+  return h("div",{style:{minHeight:"100vh",background:"#0f0f1a",color:"#fff",display:"flex"}},
+    notification&&h("div",{style:{position:"fixed",top:20,right:20,zIndex:1000,background:notification.type==="success"?"#065f46":"#7f1d1d",border:"1px solid "+(notification.type==="success"?"#10b981":"#ef4444"),color:"#fff",borderRadius:10,padding:"14px 20px",fontSize:14,fontWeight:600,maxWidth:340}},
+      (notification.type==="success"?"✅ ":"❌ ")+notification.msg),
+    quoteModal&&QuoteModal(repairs.find(function(x){return x.id===quoteModal}),sendQuote,function(){setQuoteModal(null)},iStyle),
+    h("div",{className:"sidebar"},
+      h("div",{style:{padding:"22px 18px",borderBottom:"1px solid #fff1"}},
+        h("div",{style:{color:"#c9a84c",fontSize:20,fontWeight:700,letterSpacing:".08em"}},"⌚ CHRONO"),
+        h("div",{style:{color:"#fff4",fontSize:12,letterSpacing:".1em",marginTop:2}},"REPAIR STUDIO")
+      ),
+      [{id:"dashboard",label:"Dashboard",icon:"▦"},{id:"scan",label:"Scan / Lookup",icon:"⊙"},{id:"new",label:"New Repair",icon:"+"}].map(function(item){
+        return h("button",{key:item.id,onClick:function(){setView(item.id);setSelected(null)},style:{background:view===item.id?"#fff1":"transparent",border:"none",borderLeft:view===item.id?"3px solid #c9a84c":"3px solid transparent",color:view===item.id?"#fff":"#fff6",padding:"11px 18px",textAlign:"left",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",gap:10,width:"100%"}},
+          h("span",null,item.icon),item.label);
+      }),
+      h("div",{style:{marginTop:"auto",padding:"14px 18px",borderTop:"1px solid #fff1"}},
+        h("div",{style:{fontSize:11,color:"#fff3",letterSpacing:".06em",marginBottom:8}},"STATUS SUMMARY"),
+        ALL_STATUSES.filter(function(s){return counts[s]>0}).map(function(s){
+          return h("div",{key:s,style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff5",marginBottom:3}},
+            h("span",null,s),h("span",{style:{color:STATUS_CONFIG[s].color,fontWeight:700}},counts[s]));
+        }),
+        h("button",{onClick:load,style:{marginTop:12,width:"100%",background:"transparent",border:"1px solid #fff2",color:"#fff5",borderRadius:8,padding:"5px",cursor:"pointer",fontSize:11}},"↻ Refresh")
+      )
+    ),
+    h("div",{className:"mscroll",style:{flex:1,overflow:"auto"}},
+      view==="dashboard"&&!selected&&h("div",{style:{padding:"20px 16px"}},
+        h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}},
+          h("div",null,h("h1",{style:{margin:0,fontSize:22}},"Repair Jobs"),h("div",{style:{color:"#fff5",fontSize:14,marginTop:2}},repairs.length+" total")),
+          h("button",{onClick:function(){setView("new")},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"9px 18px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:13}},"+ New")
+        ),
+        error&&h("div",{style:{background:"#1a1a2e",border:"1px solid #ef4444",borderRadius:10,padding:16,color:"#ef4444",marginBottom:16}},error),
+        h("div",{style:{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}},
+          h("input",{placeholder:"Search name, ID, brand, phone…",value:search,onChange:function(e){setSearch(e.target.value)},style:{flex:1,minWidth:200,background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,outline:"none"}}),
+          h("select",{value:filterStatus,onChange:function(e){setFilterStatus(e.target.value)},style:{background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,cursor:"pointer"}},
+            h("option",{value:"All"},"All Statuses"),
+            ALL_STATUSES.map(function(s){return h("option",{key:s,value:s},s)})
+          )
+        ),
+        loading?h("div",{style:{textAlign:"center",padding:60,color:"#fff3"}},"Loading…"):h(Fragment,null,
+          h("div",{className:"dtable",style:{background:"#1a1a2e",borderRadius:12,overflow:"hidden"}},
+            h("div",{style:{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"10px 16px",borderBottom:"1px solid #fff1",fontSize:11,color:"#fff4",letterSpacing:".07em"}},
+              h("span",null,"TICKET"),h("span",null,"CUSTOMER"),h("span",null,"WATCH"),h("span",null,"TEAM"),h("span",null,"STATUS"),h("span",null,"QUOTE"),h("span",null,"DATE IN")
+            ),
+            filtered.length===0?h("div",{style:{padding:40,textAlign:"center",color:"#fff3"}},"No repairs found"):null,
+            filtered.map(function(r,i){
+              var db=deadlineBadge(r.received_date);
+              return h("div",{key:r.id,onClick:function(){setSelected(r);setView("detail")},
+                style:{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"12px 16px",cursor:"pointer",borderBottom:i<filtered.length-1?"1px solid #fff1":"none"},
+                onMouseEnter:function(e){e.currentTarget.style.background="#fff1"},
+                onMouseLeave:function(e){e.currentTarget.style.background="transparent"}},
+                h("span",{style:{color:"#c9a84c",fontSize:13,fontWeight:600}},r.id),
+                h("div",null,h("div",{style:{fontSize:13}},r.customer_name),h("div",{style:{fontSize:11,color:"#fff4",marginTop:1}},r.phone)),
+                h("span",{style:{fontSize:13,color:"#fff8",alignSelf:"center"}},r.watch_brand),
+                h("span",{style:{fontSize:12,color:"#fff5",alignSelf:"center"}},r.team_member),
+                h("div",{style:{alignSelf:"center",display:"flex",flexDirection:"column",gap:3}},
+                  Badge(r.status),
+                  db&&h("span",{style:{fontSize:10,fontWeight:700,color:db.color,background:db.bg,borderRadius:4,padding:"1px 5px",border:"1px solid "+db.color+"40"}},db.label)
+                ),
+                h("span",{style:{fontSize:13,alignSelf:"center"}},r.quote!=null?"$"+r.quote:"—"),
+                h("span",{style:{fontSize:11,color:"#fff5",alignSelf:"center"}},r.received_date||"—")
+              );
+            })
+          ),
+          h("div",{className:"mcards"},
+            filtered.length===0?h("div",{style:{padding:40,textAlign:"center",color:"#fff3"}},"No repairs found"):null,
+            filtered.map(function(r){
+              var db=deadlineBadge(r.received_date);
+              return h("div",{key:r.id,onClick:function(){setSelected(r);setView("detail")},style:{background:"#1a1a2e",borderRadius:12,padding:16,marginBottom:10,cursor:"pointer",border:"1px solid #fff1"}},
+                h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}},h("span",{style:{color:"#c9a84c",fontSize:13,fontWeight:700}},r.id),Badge(r.status)),
+                h("div",{style:{fontSize:17,fontWeight:700,marginBottom:3}},r.customer_name||"—"),
+                h("div",{style:{fontSize:14,color:"#fff6",marginBottom:8}},r.watch_brand||"—"),
+                h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"#fff4"}},
+                  h("span",null,"📞 "+(r.phone||"—")),h("span",null,r.quote!=null?"$"+r.quote:"No quote"),h("span",null,r.received_date||"—")
+                ),
+                db&&h("div",{style:{marginTop:8}},h("span",{style:{fontSize:11,fontWeight:700,color:db.color,background:db.bg,borderRadius:4,padding:"2px 8px",border:"1px solid "+db.color+"40"}},db.label))
+              );
+            })
+          )
+        )
+      ),
+      view==="detail"&&selected&&h("div",{style:{padding:"20px 16px",maxWidth:900}},
+        h("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:24,flexWrap:"wrap"}},
+          h("button",{onClick:function(){setSelected(null);setView("dashboard")},style:{background:"transparent",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontSize:13}},"← Back"),
+          h("h1",{style:{margin:0,fontSize:18}},selected.id),
+          Badge(selected.status),
+          h("div",{style:{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}},
+            selected.phone&&h("button",{onClick:function(){setQuoteModal(selected.id)},style:{background:"#10b981",color:"#fff",border:"none",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}},"💬 Quote"),
+            h("button",{onClick:function(){printTicket(selected)},style:{background:"#fff2",color:"#fff",border:"1px solid #fff3",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontSize:13}},"🖨 Print"),
+            h("button",{onClick:function(){setView("customer")},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}},"👁 Customer View")
+          )
+        ),
+        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"CUSTOMER"),
+            h("div",{style:{fontSize:20,fontWeight:700,marginBottom:6}},selected.customer_name),
+            h("div",{style:{fontSize:14,color:"#fff7",marginBottom:3}},"📞 "+(selected.phone||"—")),
+            h("div",{style:{fontSize:14,color:"#fff5"}},"👤 "+(selected.team_member||"—"))
+          ),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"WATCH"),
+            h("div",{style:{fontSize:20,fontWeight:700,marginBottom:6}},selected.watch_brand||"—"),
+            h("div",{style:{fontSize:14,color:"#fff5"}},"In: "+selected.received_date),
+            h("div",{style:{fontSize:14,color:"#fff5",marginTop:3}},"Ready: "+(selected.estimated_ready||"TBC"))
+          ),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"FINANCIALS"),
+            h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:8}},h("span",{style:{color:"#fff6",fontSize:14}},"Cost to Business"),h("span",{style:{fontWeight:700}},selected.cost_to_business!=null?"$"+selected.cost_to_business:"—")),
+            h("div",{style:{display:"flex",justifyContent:"space-between"}},h("span",{style:{color:"#fff6",fontSize:14}},"Quote to Customer"),h("span",{style:{fontWeight:700,color:"#c9a84c"}},selected.quote!=null?"$"+selected.quote:"—"))
+          ),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em"}},"QR CODE"),
+            QRCode(selected.id,100),
+            h("button",{onClick:function(){printTicket(selected)},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"6px 14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}},"🖨 Print")
+          )
+        ),
+        selected.issue&&h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
+          h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:8}},"WORK BEING DONE"),
+          h("div",{style:{fontSize:14,color:"#fff9",lineHeight:1.7,whiteSpace:"pre-wrap"}},selected.issue)
+        ),
+        h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
+          h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:12}},"UPDATE STATUS"),
+          h("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+            ALL_STATUSES.map(function(s){
+              return h("button",{key:s,onClick:function(){changeStatus(selected.id,s)},style:{background:selected.status===s?STATUS_CONFIG[s].color:"transparent",border:"1px solid "+STATUS_CONFIG[s].color,color:selected.status===s?"#fff":STATUS_CONFIG[s].color,padding:"6px 14px",borderRadius:20,cursor:"pointer",fontSize:13,fontWeight:600}},s);
+            })
+          )
+        ),
+        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"NOTES"),
+            h("div",{style:{fontSize:13,color:"#fff7",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-wrap",minHeight:36}},selected.notes||"No notes yet."),
+            h("textarea",{placeholder:"Add a note…",value:noteInput,onChange:function(e){setNoteInput(e.target.value)},style:{width:"100%",background:"#0f0f1a",border:"1px solid #fff2",color:"#fff",borderRadius:8,padding:10,fontSize:13,minHeight:70,resize:"vertical",boxSizing:"border-box",outline:"none"}}),
+            h("button",{onClick:function(){addNote(selected.id,noteInput)},style:{marginTop:8,background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"7px 16px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:13}},"Add Note")
+          ),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:12}},"HISTORY"),
+            (selected.history||[]).slice().reverse().map(function(hh,i){
+              return h("div",{key:i,style:{display:"flex",gap:10,marginBottom:10}},
+                h("div",{style:{width:8,height:8,borderRadius:"50%",background:i===0?"#c9a84c":"#fff2",marginTop:4,flexShrink:0}}),
+                h("div",null,h("div",{style:{fontSize:11,color:"#fff3"}},hh.date),h("div",{style:{fontSize:13,color:"#fff7",marginTop:1}},hh.event))
+              );
+            })
+          )
+        )
+      ),
+      view==="scan"&&h("div",{style:{padding:"20px 16px",maxWidth:540}},
+        h("h1",{style:{margin:"0 0 8px",fontSize:22}},"Scan / Lookup"),
+        h("p",{style:{color:"#fff5",marginBottom:24,fontSize:14}},"Enter a ticket ID or phone number."),
+        h("div",{style:{display:"flex",gap:10,marginBottom:20}},
+          h("input",{placeholder:"Ticket ID or phone…",value:scanInput,onChange:function(e){setScanInput(e.target.value);setScanError(false);setScanResult(null)},onKeyDown:function(e){if(e.key==="Enter")scan()},style:{flex:1,background:"#1a1a2e",border:"1px solid #fff3",color:"#fff",borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none"}}),
+          h("button",{onClick:scan,style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"0 20px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14}},"Find")
+        ),
+        scanError&&h("div",{style:{background:"#1a1a2e",border:"1px solid #ef444450",borderRadius:10,padding:16,color:"#ef4444",fontSize:14}},"No repair found."),
+        scanResult&&h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:20}},
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}},
+            h("div",null,
+              h("div",{style:{color:"#c9a84c",fontSize:14,fontWeight:700}},scanResult.id),
+              h("div",{style:{fontSize:20,fontWeight:700,marginTop:3}},scanResult.customer_name),
+              h("div",{style:{color:"#fff6",marginTop:3}},scanResult.watch_brand)
+            ),
+            Badge(scanResult.status)
+          ),
+          h("div",{style:{display:"flex",gap:10}},
+            h("button",{onClick:function(){setSelected(scanResult);setView("detail")},style:{flex:1,background:"#c9a84c",color:"#1a1a2e",border:"none",padding:10,borderRadius:8,cursor:"pointer",fontWeight:700}},"Open"),
+            h("button",{onClick:function(){printTicket(scanResult)},style:{flex:1,background:"transparent",color:"#fff",border:"1px solid #fff3",padding:10,borderRadius:8,cursor:"pointer"}},"🖨 Print")
+          )
+        )
+      ),
+      view==="new"&&h(NewRepairForm,{iStyle:iStyle,saving:saving,form:form,setForm:setForm,onSave:saveRepair})
+    ),
+    h("div",{className:"bnav"},
+      [{id:"dashboard",label:"Jobs",icon:"▦"},{id:"scan",label:"Lookup",icon:"⊙"},{id:"new",label:"New",icon:"+"}].map(function(item){
+        return h("button",{key:item.id,onClick:function(){setView(item.id);setSelected(null)},style:{background:"transparent",border:"none",color:view===item.id?"#c9a84c":"#fff5",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 24px"}},
+          h("span",{style:{fontSize:22}},item.icon),h("span",{style:{fontSize:11}},item.label));
+      })
+    )
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+})();
 </script>
 </body>
 </html>
