@@ -3,6 +3,7 @@ const multer = require("multer");
 const sharp = require("sharp");
 const fetch = require("node-fetch");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,23 +16,53 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const SUPABASE_URL   = process.env.SUPABASE_URL;
 const SUPABASE_KEY   = process.env.SUPABASE_KEY;
 const APP_URL = process.env.APP_URL || "https://nodejs-production-2d3b.up.railway.app";
-const path    = require("path");
 
 app.use(cors());
-app.use((req, res, next) => {
-  if (req.path === "/analyze-watch") return next();
-  express.json({ limit: "1mb" })(req, res, next);
-});
 
-// Serve the frontend app
-const HTML_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH 
-  ? process.env.RAILWAY_VOLUME_MOUNT_PATH + "/index.html"
-  : "/app/index.html";
+// OPTIMIZATION: Apply JSON parsing globally. It safely ignores multipart/form-data (file uploads) automatically.
+app.use(express.json({ limit: "1mb" }));
 
-app.use(express.static("/app"));
-app.get("*", (req, res) => {
-  if (!req.path.startsWith("/analyze-watch") && !req.path.startsWith("/send-quote") && !req.path.startsWith("/customer-respond")) {
-    res.sendFile("/app/index.html");
+// OPTIMIZATION: Safer path resolution for the frontend
+// Assuming your index.html is kept in a folder named 'public' next to server.js
+const STATIC_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, "public");
+const HTML_PATH = path.join(STATIC_DIR, "index.html");
+
+app.use(express.static(STATIC_DIR));
+
+// ------------------------------------------------------------------
+// NEW: SECURE SUPABASE PROXY
+// This hides your Supabase keys from the frontend. The frontend will
+// now make requests to `/api/repairs` instead of Supabase directly.
+// ------------------------------------------------------------------
+app.all("/api/repairs*", async (req, res) => {
+  try {
+    const query = req.originalUrl.split('?')[1] || "";
+    const url = `${SUPABASE_URL}/rest/v1/repairs${query ? '?' + query : ''}`;
+
+    const fetchOpts = {
+      method: req.method,
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": req.headers["prefer"] || "return=representation"
+      }
+    };
+
+    // Attach body for POST/PATCH requests
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      fetchOpts.body = JSON.stringify(req.body);
+    }
+
+    const sbRes = await fetch(url, fetchOpts);
+    const data = await sbRes.text();
+
+    if (!sbRes.ok) throw new Error(data);
+
+    res.status(sbRes.status).send(data);
+  } catch (err) {
+    console.error("Supabase Proxy Error:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -52,14 +83,13 @@ app.post("/analyze-watch", upload.single("photo"), async (req, res) => {
     const originalKb = Math.round(originalBuffer.length / 1024);
     console.log("Photo received: " + originalKb + "kb");
 
-    // Resize to 600px max, greyscale (better for engraved text), low quality JPEG
+    // Resize to 600px max, greyscale, low quality JPEG
     resizedBuffer = await sharp(originalBuffer)
       .resize({ width: 600, height: 600, fit: "inside", withoutEnlargement: true })
       .greyscale()
       .jpeg({ quality: 60, progressive: false })
       .toBuffer();
 
-    // Free original immediately
     originalBuffer = null;
     req.file.buffer = null;
 
@@ -67,7 +97,7 @@ app.post("/analyze-watch", upload.single("photo"), async (req, res) => {
     console.log("Compressed to: " + resizedKb + "kb");
 
     const base64 = resizedBuffer.toString("base64");
-    resizedBuffer = null; // free after encoding
+    resizedBuffer = null; 
 
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -77,13 +107,14 @@ app.post("/analyze-watch", upload.single("photo"), async (req, res) => {
       },
       body: JSON.stringify({
         model: "gpt-4o",
+        response_format: { type: "json_object" }, // OPTIMIZATION: Force pure JSON response
         max_tokens: 150,
         messages: [{
           role: "user",
           content: [
             {
               type: "text",
-              text: "Watch repair expert. Look at this caseback or movement image.\nExtract:\n1. Watch brand (Seiko, Citizen, Omega, Rolex, Tissot, Orient, Casio etc)\n2. Movement number (7N42, NH35, ETA 2824-2, 6P20, Miyota 2035, VK63A, PC21 etc)\n\nReply ONLY with JSON, no markdown:\n{\"brand\":\"name or null\",\"movement\":\"number or null\",\"notes\":\"other text or null\"}"
+              text: "Watch repair expert. Look at this caseback or movement image.\nExtract:\n1. Watch brand (Seiko, Citizen, Omega, Rolex, Tissot, Orient, Casio etc)\n2. Movement number (7N42, NH35, ETA 2824-2, 6P20, Miyota 2035, VK63A, PC21 etc)\n\nReply ONLY with JSON:\n{\"brand\":\"name or null\",\"movement\":\"number or null\",\"notes\":\"other text or null\"}"
             },
             {
               type: "image_url",
@@ -104,17 +135,17 @@ app.post("/analyze-watch", upload.single("photo"), async (req, res) => {
     }
 
     const openaiData = await openaiRes.json();
-    const rawContent = openaiData.choices && openaiData.choices[0] && openaiData.choices[0].message && openaiData.choices[0].message.content;
+    const rawContent = openaiData.choices?.[0]?.message?.content;
+    
     if (!rawContent) throw new Error("Empty response from OpenAI");
-
     console.log("OpenAI raw response:", rawContent);
 
-    const clean = rawContent.replace(/```json\n?|```\n?/g, "").trim();
+    // Parse the guaranteed JSON
     let result;
     try {
-      result = JSON.parse(clean);
+      result = JSON.parse(rawContent.trim());
     } catch (e) {
-      console.error("JSON parse failed:", clean);
+      console.error("JSON parse failed:", rawContent);
       throw new Error("Could not parse response as JSON");
     }
 
@@ -193,7 +224,16 @@ app.post("/customer-respond", async (req, res) => {
   }
 });
 
-// Supabase helpers
+// Catch-all route to serve the frontend
+app.get("*", (req, res) => {
+  if (!req.path.startsWith("/api") && !req.path.startsWith("/analyze-watch") && !req.path.startsWith("/send-quote") && !req.path.startsWith("/customer-respond")) {
+    res.sendFile(HTML_PATH);
+  } else {
+    res.status(404).json({ error: "Route not found" });
+  }
+});
+
+// Supabase helpers (Kept for your internal Express routes like SMS)
 async function getRepair(id) {
   const res = await fetch(SUPABASE_URL + "/rest/v1/repairs?id=eq." + encodeURIComponent(id), {
     headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
