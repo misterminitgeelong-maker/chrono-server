@@ -24,8 +24,16 @@ app.use((req, res, next) => {
 });
 
 // Serve the frontend app
-app.use(express.static(path.join(__dirname)));
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+const HTML_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH 
+  ? process.env.RAILWAY_VOLUME_MOUNT_PATH + "/index.html"
+  : "/app/index.html";
+
+app.use(express.static("/app"));
+app.get("*", (req, res) => {
+  if (!req.path.startsWith("/analyze-watch") && !req.path.startsWith("/send-quote") && !req.path.startsWith("/customer-respond")) {
+    res.sendFile("/app/index.html");
+  }
+});
 
 // Multer: 10MB limit, memory storage
 const upload = multer({
