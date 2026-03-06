@@ -85,8 +85,9 @@ var SERVICES=[
 ];
 var CAT_LABELS={quick:"Quick Jobs",glass:"Glass",polish:"Polishing",service:"Full Service"};
 
-function QRCode(id,size){
-  size=size||120;
+// FIXED: Converted QRCode to a proper React Component to safely use Hooks
+function QRCode(props){
+  var id=props.id, size=props.size||120;
   var url=APP_URL+"?repair="+encodeURIComponent(id);
   var canvasRef=useRef(null);
   
@@ -362,8 +363,8 @@ function CustomerPage(repair,onBack){
         h("div",{style:{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:12}},"WORK BEING DONE"),
         h("div",{style:{fontSize:14,color:"#374151",lineHeight:1.7}},repair.issue)
       ),
-      // NEW: Customer Photo Gallery
-      (repair.photos&&repair.photos.length>0)&&h("div",{style:{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}},
+      // FIXED: Added Array safety check here
+      (Array.isArray(repair.photos)&&repair.photos.length>0)&&h("div",{style:{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}},
         h("div",{style:{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:16}},"PHOTOS"),
         h("div",{className:"photo-scroll",style:{display:"flex",gap:12,overflowX:"auto",paddingBottom:8}},
           repair.photos.map(function(p,i){
@@ -408,7 +409,6 @@ function App(){
   var emptyForm={team_member:"",customer_name:"",phone:"",watch_brand:"",issue:"",cost_to_business:"",quote:"",estimated_ready:"",status:"Go Ahead",notes:""};
   var _15=useState(emptyForm),form=_15[0],setForm=_15[1];
   
-  // NEW: Upload State and Ref
   var _16=useState(false),uploadingPhoto=_16[0],setUploadingPhoto=_16[1];
   var photoUploadRef=useRef(null);
 
@@ -507,7 +507,6 @@ function App(){
     else{setScanResult(null);setScanError(true);}
   }
   
-  // NEW: Photo Upload Handler
   function handleStaffPhotoUpload(e){
     var file=e.target.files[0];
     if(!file||!selected)return;
@@ -516,7 +515,7 @@ function App(){
     var fd=new FormData();
     fd.append("photo",file);
     fd.append("repairId",selected.id);
-    fd.append("photoType","documentation"); // can be expanded later
+    fd.append("photoType","documentation");
     
     fetch("/api/upload-photo",{method:"POST",body:fd})
       .then(function(r){return r.json()})
@@ -671,7 +670,8 @@ function App(){
           ),
           h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}},
             h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em"}},"QR CODE"),
-            QRCode(selected.id,100),
+            // FIXED: Using React Component syntax
+            h(QRCode,{id:selected.id,size:100}),
             h("button",{onClick:function(){printTicket(selected)},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"6px 14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}},"\uD83D\uDDA8 Print")
           )
         ),
@@ -680,7 +680,6 @@ function App(){
           h("div",{style:{fontSize:14,color:"#fff9",lineHeight:1.7,whiteSpace:"pre-wrap"}},selected.issue)
         ),
         
-        // NEW: Staff Photo Section
         h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
             h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em"}},"DOCUMENTATION PHOTOS"),
@@ -689,7 +688,8 @@ function App(){
               h("button",{onClick:function(){photoUploadRef.current&&photoUploadRef.current.click()},disabled:uploadingPhoto,style:{background:uploadingPhoto?"#6b7280":"#fff2",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8,cursor:uploadingPhoto?"not-allowed":"pointer",fontSize:13}},uploadingPhoto?"Uploading\u2026":"\uD83D\uDCF8 Add Photo")
             )
           ),
-          (selected.photos&&selected.photos.length>0)?h("div",{className:"photo-scroll",style:{display:"flex",gap:12,overflowX:"auto",paddingBottom:8}},
+          // FIXED: Added Array safety check here
+          (Array.isArray(selected.photos)&&selected.photos.length>0)?h("div",{className:"photo-scroll",style:{display:"flex",gap:12,overflowX:"auto",paddingBottom:8}},
             selected.photos.map(function(p,i){
               return h("a",{key:i,href:p.url,target:"_blank",style:{flexShrink:0}},
                 h("img",{src:p.url,style:{height:120,width:120,objectFit:"cover",borderRadius:10,border:"1px solid #fff2"}})
