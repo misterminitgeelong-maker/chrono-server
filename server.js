@@ -19,20 +19,17 @@ const APP_URL = process.env.APP_URL || "https://nodejs-production-2d3b.up.railwa
 
 app.use(cors());
 
-// OPTIMIZATION: Apply JSON parsing globally. It safely ignores multipart/form-data (file uploads) automatically.
+// Apply JSON parsing globally
 app.use(express.json({ limit: "1mb" }));
 
-// OPTIMIZATION: Safer path resolution for the frontend
-// Assuming your index.html is kept in a folder named 'public' next to server.js
+// Static directory for frontend
 const STATIC_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, "public");
 const HTML_PATH = path.join(STATIC_DIR, "index.html");
 
 app.use(express.static(STATIC_DIR));
 
 // ------------------------------------------------------------------
-// NEW: SECURE SUPABASE PROXY
-// This hides your Supabase keys from the frontend. The frontend will
-// now make requests to `/api/repairs` instead of Supabase directly.
+// SECURE SUPABASE PROXY
 // ------------------------------------------------------------------
 app.all("/api/repairs*", async (req, res) => {
   try {
@@ -49,7 +46,6 @@ app.all("/api/repairs*", async (req, res) => {
       }
     };
 
-    // Attach body for POST/PATCH requests
     if (req.method !== "GET" && req.method !== "HEAD") {
       fetchOpts.body = JSON.stringify(req.body);
     }
@@ -66,12 +62,72 @@ app.all("/api/repairs*", async (req, res) => {
   }
 });
 
-// Multer: 10MB limit, memory storage
+// Multer: 10MB limit, memory storage for uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
+// ------------------------------------------------------------------
+// NEW: PHOTO UPLOAD FOR DOCUMENTATION
+// ------------------------------------------------------------------
+app.post("/api/upload-photo", upload.single("photo"), async (req, res) => {
+  try {
+    const { repairId, photoType } = req.body; // photoType e.g., 'before', 'after', 'reference'
+    if (!req.file || !repairId) return res.status(400).json({ error: "Missing photo or repair ID" });
+
+    // Compress image: good quality for documentation, but small file size
+    const compressedBuffer = await sharp(req.file.buffer)
+      .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    // Create a unique filename organized by repair ticket
+    const filename = `${repairId}-${Date.now()}.jpg`;
+    const storagePath = `${repairId}/${filename}`;
+
+    // Upload to Supabase Storage
+    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/repair-photos/${storagePath}`, {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "image/jpeg",
+      },
+      body: compressedBuffer
+    });
+
+    if (!uploadRes.ok) throw new Error("Storage upload failed: " + await uploadRes.text());
+
+    // Generate the public URL for the frontend
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/repair-photos/${storagePath}`;
+
+    // Update the database record
+    const repair = await getRepair(repairId);
+    const currentPhotos = repair.photos || [];
+    const newPhotoObj = { url: publicUrl, type: photoType || 'general', date: new Date().toISOString() };
+    currentPhotos.push(newPhotoObj);
+
+    // Add an event to the history log
+    const today = new Date().toISOString().slice(0, 10);
+    const typeLabel = photoType ? photoType.charAt(0).toUpperCase() + photoType.slice(1) : "General";
+    const history = (repair.history || []).concat([{ date: today, event: `${typeLabel} documentation photo added` }]);
+
+    await patchRepair(repairId, { photos: currentPhotos, history: history });
+
+    console.log(`Uploaded ${typeLabel} photo for ${repairId}`);
+    res.json({ success: true, photo: newPhotoObj, photos: currentPhotos, history: history });
+
+  } catch (err) {
+    console.error("upload-photo error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ------------------------------------------------------------------
+// AI WATCH SCANNER
+// ------------------------------------------------------------------
 app.post("/analyze-watch", upload.single("photo"), async (req, res) => {
   let originalBuffer = null;
   let resizedBuffer = null;
@@ -107,7 +163,7 @@ app.post("/analyze-watch", upload.single("photo"), async (req, res) => {
       },
       body: JSON.stringify({
         model: "gpt-4o",
-        response_format: { type: "json_object" }, // OPTIMIZATION: Force pure JSON response
+        response_format: { type: "json_object" }, 
         max_tokens: 150,
         messages: [{
           role: "user",
@@ -140,7 +196,6 @@ app.post("/analyze-watch", upload.single("photo"), async (req, res) => {
     if (!rawContent) throw new Error("Empty response from OpenAI");
     console.log("OpenAI raw response:", rawContent);
 
-    // Parse the guaranteed JSON
     let result;
     try {
       result = JSON.parse(rawContent.trim());
@@ -161,7 +216,9 @@ app.post("/analyze-watch", upload.single("photo"), async (req, res) => {
   }
 });
 
-// Send quote SMS
+// ------------------------------------------------------------------
+// SMS COMMUNICATION
+// ------------------------------------------------------------------
 app.post("/send-quote", async (req, res) => {
   try {
     const { repairId, quote, message } = req.body;
@@ -195,7 +252,6 @@ app.post("/send-quote", async (req, res) => {
   }
 });
 
-// Customer responds to quote
 app.post("/customer-respond", async (req, res) => {
   try {
     const { repairId, response } = req.body;
@@ -233,7 +289,7 @@ app.get("*", (req, res) => {
   }
 });
 
-// Supabase helpers (Kept for your internal Express routes like SMS)
+// Supabase helpers
 async function getRepair(id) {
   const res = await fetch(SUPABASE_URL + "/rest/v1/repairs?id=eq." + encodeURIComponent(id), {
     headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
