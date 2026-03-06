@@ -1,1 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+  <title>Chrono Repair Studio</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,serif;background:#0f0f1a;color:#fff}
+    input,select,textarea,button{font-family:inherit}
+    .sidebar{width:240px;background:#1a1a2e;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+    .bnav{display:none}
+    .dtable{display:block}
+    .mcards{display:none}
+    @media(max-width:768px){
+      .sidebar{display:none!important}
+      .bnav{display:flex!important;position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;border-top:1px solid rgba(255,255,255,0.08);z-index:500;padding:8px 0 14px;justify-content:space-around}
+      .mscroll{padding-bottom:80px!important}
+      .dtable{display:none!important}
+      .mcards{display:block!important}
+    }
+    select option{background:#1a1a2e;color:#fff}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// Movement data remains the same
+window.MOVEMENTS={"0100":500,"0110":500,"0200":500,"0210":500,"0S10":500,"0S20":500,"0T13":500,"0T14":500,"0T15":500,"0T16":500,"0T18":500,"0T22":500,"0T24":500,"1006":375,"1012":375,"1016":375,"1019":375,"1032":375,"1042":375,"1062":375,"1063":375,"1064":375,"1069":375,"2000-1":500,"2040":688,"2041":688,"2042":688,"2043":688,"2044":688,"2045":688,"2046":688,"2047":688,"2048":688,"2080":688,"2081":688,"2082":688,"2083":688,"2084":688,"2085":688,"2086":688,"2087":688,"2094":688,"2095":688,"2096":688,"2097":688,"2098":688,"2099":688,"2205":500,"2205A":500,"2206":500,"2220":500,"2512":500,"2515":500,"2516":500,"2520":500,"2671":500,"2672":500,"2673":500,"2750":500,"2752":500,"2753":500,"2754":500,"2755":500,"2756":500,"2757":500,"2758":500,"2760":500,"2762":500,"2763":500,"2764":500,"2765":500,"2766":500,"2772":500,"2773":500,"2774":500,"2776":500,"2778":500,"2783":500,"2784":500,"2788":500,"2789":500,"2790":500,"2791":500,"2792":500,"2793":500,"2794":500,"2795":500,"2796":500,"2797":500,"2798":500,"2799":500,"2801":500,"2801-2":500,"2802":500,"2804":500,"2804-2":500,"2824":500,"2824-2":500,"2825":500,"2825-2":500,"2826":500,"2834":500,"2834-2":500,"2836":500,"2836-2":500,"2840":500,"2842":500,"2846":500,"2848":500,"2879":500,"2892":500,"2892-A2":500,"2893":500,"2893-2":500,"2894":500,"2895":500,"2897":500,"4003":375,"4003B":375,"4120BM":375,"4220B":375,"46941":500,"46942":500,"46943":500,"46944":500,"46945":500,"46E10":500,"46E40":500,"46E45":500,"46E46":500,"46E50":500,"48741":500,"48742":500,"48742B":500,"48743":500,"48940":500,"48941":500,"48942":500,"48943":500,"48944":500,"48945":500,"48946":500,"48947":500,"49740":500,"49741":500,"49742":500,"49743":500,"49744":500,"49745":500,"49746":500,"49747":500,"49748":500,"49749":500,"49A10":500,"49A40":500,"4R15":500,"4R15A":500,"4R16":500,"4R16A":500,"4R34":500,"4R34A":500,"4R35":500,"4R35A":500,"4R36":500,"4R36A":500,"4R37":500,"4R37A":500,"4R38":500,"4R38A":500,"4R39":500,"4R39A":500,"4R57":500,"4R57A":500,"4R68":500,"4R68A":500,"4R70":500,"4R70A":500,"4R71":500,"4R71A":500,"4R72":500,"4R72A":500,"4S15":500,"4S16":500,"4S17":500,"4S19":500,"4S20":562,"4S21":500,"4S26":500,"4S27":562,"5010B":375,"5021":562,"5021D":375,"5030":562,"5030D":375,"5040":562,"5040B-SA":375,"505":375,"5050":562,"5050B":375,"507":375,"50741":500,"509":375,"512":375,"513":375,"5130D":375,"515":375,"517":375,"519":375,"521":375,"523":375,"532":375,"539":375,"541":375,"543":375,"544":375,"545":375,"546":375,"547":375,"585":375,"586":375,"587":375,"592":375,"5M42":500,"5M42A":500,"5M43":500,"5M45":500,"5M47":500,"5M54":500,"5M62":500,"5M62A":500,"5M63":500,"5M65":500,"5M82":500,"5M83":500,"5M84":500,"5M85":500,"6003":375,"6003B":375,"6003D":375,"6004":375,"6004B":375,"6105":500,"6105A":500,"6105B":500,"6119":500,"6119A":500,"6119B":500,"6119C":500,"6138":500,"6138A":500,"6138B":500,"6139":500,"6139A":500,"6139B":500,"6145":500,"6146":500,"6159":500,"6306":500,"6309":500,"6309A":500,"6497":500,"6497-1":500,"6497-2":500,"6498":500,"6498-1":500,"6498-2":500,"6602":500,"6605":500,"6619":500,"6L15":500,"6L15A":500,"6L35":500,"6L35A":500,"6L36":500,"6L37":500,"6P29":500,"6P80":500,"6P90":500,"6R00":500,"6R15":500,"6R15A":500,"6R15B":500,"6R15C":500,"6R15D":500,"6R20":500,"6R20A":500,"6R21":500,"6R21A":500,"6R24":500,"6R24A":500,"6R27":500,"6R27A":500,"6R31":500,"6R31A":500,"6R35":500,"6R35A":500,"6R54":500,"6R54A":500,"6R55":500,"6R55A":500,"6R64":500,"6R64A":500,"7002":500,"7009":500,"7009A":500,"702":375,"703":375,"704":375,"705":375,"706":375,"708":375,"715":375,"716":375,"719":375,"751":375,"751E":375,"753":375,"762":375,"762-SA":375,"763":375,"763S":375,"774":375,"775":375,"7750":688,"7751":688,"7752":688,"7753":688,"7754":688,"776":375,"7760":688,"7765":688,"7768":688,"7769":688,"782":375,"783":375,"785":375,"786":375,"787":375,"788":375,"789":375,"7A28":562,"7A38":562,"7C43":562,"7C44":562,"7C45":562,"7C46":562,"7C46A":562,"7C47":562,"7N07":500,"7N08":500,"7S26":438,"7S26A":438,"7S26B":438,"7S26C":438,"7S36":438,"7S36A":438,"7S36B":438,"7S36C":438,"7T32":562,"7T32A":562,"7T32B":562,"7T34":562,"7T42":562,"7T62":562,"7T62A":562,"7T82":562,"7T82A":562,"7T92":562,"7T94":562,"7T94A":562,"801":375,"802":375,"803":375,"804":375,"805":375,"8200":500,"8210":500,"8215":500,"8217":500,"8218":500,"8219":500,"8220":500,"8221":500,"8300":500,"8310":500,"888":375,"8L10":500,"8L20":500,"8L35":688,"8L35A":688,"8L36":688,"8L36A":688,"8L45":688,"8L45A":688,"8L55":688,"8L55A":688,"8N01":500,"8N02":500,"8N03":500,"8N24":500,"8N33":500,"8N41":500,"8R28":688,"8R28A":688,"8R39":688,"8R46":688,"8R48":688,"8R57":688,"8T28":562,"8T32":562,"8T33":562,"8T45":562,"8T53":562,"8T67":562,"8T68":562,"9010":500,"9015":500,"9015M":500,"9016":500,"9018":500,"9019":500,"9020":500,"9021":500,"9022":500,"9029":500,"9030":500,"9031":500,"9033":500,"9039":500,"9039B":500,"9040":500,"9050":500,"9051":500,"9052":500,"9056":500,"9058":500,"9060":500,"9062":500,"9064":500,"9065":500,"9075":500,"9076":500,"9080":500,"9085":500,"9090":500,"9093":500,"9094":500,"9095":500,"9096":500,"9097":500,"9099":500,"9100":500,"9100B":500,"9110":500,"9132":500,"9134":500,"9135":500,"9136":500,"9140":500,"9160":500,"9161":500,"9162":500,"9163":500,"9164":500,"9165":500,"9166":500,"9167":500,"9168":500,"9169":500,"9173":500,"9174":500,"9175":500,"9178":500,"9R15":688,"9R15A":688,"9R31":688,"9R31A":688,"9R65":688,"9R65A":688,"9R66":688,"9R66A":688,"9R84":688,"9R86":688,"9R86A":688,"9R96":688,"9RA2":688,"9RA5":688,"9S55":688,"9S56":688,"9S57":688,"9S65":688,"9S65A":688,"9S66":688,"9S66A":688,"9S68":688,"9S85":688,"9S85A":688,"9S86":688,"9S86A":688,"9SA2":688,"9SA4":688,"9SA5":688,"B610":562,"B612":562,"B613":562,"B614":562,"B620":562,"B621":562,"B623":562,"B630":562,"B640":562,"B641":562,"B642":562,"B645":562,"B650":562,"B651":562,"B660":562,"B670":562,"B710":562,"B712":562,"B720":562,"B740":562,"B812":562,"B820":562,"B821":562,"B823":562,"B830":562,"B840":562,"B841":562,"B850":562,"B860":562,"B870":562,"DL10":500,"F06.111":375,"F06.115":375,"F06.161":375,"F07.111":375,"F07.115":375,"F6724":500,"F6922":500,"F6923":500,"F6924":500,"F6N10":500,"F6N40":500,"F6N42":500,"F6N44":500,"F6N46":500,"F6N80":500,"F6T10":500,"F6T40":500,"F6T42":500,"F6T44":500,"F6T46":500,"F6T80":500,"FS00":562,"FS01":562,"FS20":562,"FS21":562,"FS60":562,"G10.211":375,"G10.212":375,"G10.711":375,"G10.712":375,"G15.211":375,"G15.212":375,"G15.261":375,"G20.212":375,"G30.212":375,"G620":562,"G870":562,"GL00":375,"GL10":375,"GL20":375,"GL22":375,"GL30":375,"GL32":375,"GL34":375,"GL36":375,"GM00":375,"GM02":375,"GM10":375,"GM15":375,"GN10":375,"GN12":375,"GN15":375,"GN17":375,"GP10":375,"GP11":375,"GP12":375,"GP13":375,"H145":562,"H146":562,"H147":562,"H148":562,"H149":562,"H500":562,"H501":562,"H502":562,"H503":562,"H504":562,"H506":562,"H507":562,"H508":562,"H510":562,"H512":562,"H800":562,"H820":562,"H824":562,"H830":562,"H840":562,"H870":562,"H875":562,"JR10":562,"JR20":562,"JS15":562,"JS16":562,"JS25":562,"JS26":562,"M0100":500,"M0200":500,"M2824":438,"M2836":438,"M2892":438,"M6497":438,"M6498":438,"NE15":500,"NE15A":500,"NE15B":500,"NE20":500,"NE20A":500,"NE57":500,"NE57A":500,"NE86":500,"NE88":500,"NH05":500,"NH05A":500,"NH06":500,"NH06A":500,"NH15":500,"NH15A":500,"NH25":500,"NH25A":500,"NH34":500,"NH34A":500,"NH35":500,"NH35A":500,"NH36":500,"NH36A":500,"NH38":500,"NH38A":500,"NH70":500,"NH70A":500,"NH72":500,"NH72A":500,"OS10":562,"OS11":562,"OS20":562,"OS21":562,"OS30":562,"OS60":562,"OS62":562,"OS80":562,"OS90":562,"OU30":562,"OW50":562,"RA-AA0001":500,"RA-AA0002":500,"RA-AA0003":500,"RA-AA0004":500,"RA-AA0005":500,"ST16":438,"ST1612":438,"ST1621":438,"ST17":438,"ST1701":438,"ST1802":438,"ST1812":438,"ST19":438,"ST21":438,"ST2100":438,"ST2108":438,"ST2130":438,"ST2141":438,"ST2145":438,"ST25":438,"ST2530":438,"ST36":438,"ST6610":438,"SW200":500,"SW200-1":500,"SW210":500,"SW215":500,"SW220":500,"SW260":500,"SW280":500,"SW285":500,"SW300":500,"SW300-1":500,"SW301":500,"SW500":500,"SW510":500,"T241":562,"TY2806":438,"TY2809":438,"TY2813":438,"TY3135":438,"TY7750":438};
+</script>
+<script>
+(function(){
+var h=React.createElement,useState=React.useState,useEffect=React.useEffect,useRef=React.useRef,Fragment=React.Fragment;
+var APP_URL=window.location.origin;
+var MOVEMENTS=window.MOVEMENTS;
 
+// OPTIMIZATION: Secure proxy routing, no raw Supabase keys
+function sbFetch(path,opts){
+  opts=opts||{};
+  return fetch("/api/"+path,Object.assign({},opts,{
+    headers:Object.assign({"Content-Type":"application/json","Prefer":opts.prefer||"return=representation"},opts.headers||{})
+  })).then(function(r){
+    if(!r.ok)return r.text().then(function(t){throw new Error(t)});
+    return r.text().then(function(t){return t?JSON.parse(t):[]});
+  });
+}
+
+var STATUS_CONFIG={
+  "Go Ahead":{color:"#3B82F6",bg:"#EFF6FF"},
+  "Not Going":{color:"#EF4444",bg:"#FEF2F2"},
+  "Collected":{color:"#6B7280",bg:"#F9FAFB"},
+  "In Progress":{color:"#8B5CF6",bg:"#F5F3FF"},
+  "Awaiting Parts":{color:"#F59E0B",bg:"#FFFBEB"},
+  "Ready for Collection":{color:"#10B981",bg:"#ECFDF5"}
+};
+var ALL_STATUSES=Object.keys(STATUS_CONFIG);
+
+var SERVICES=[
+  {id:"batt",label:"Battery Replacement",price:41,cat:"quick"},
+  {id:"gasket",label:"Gasket Replacement",price:6,cat:"quick"},
+  {id:"prestest",label:"Pressure Test",price:12,cat:"quick"},
+  {id:"springbar",label:"Spring Bar/Pin",price:6,cat:"quick"},
+  {id:"capac",label:"Capacitor Replacement",price:150,cat:"quick"},
+  {id:"ultrasonic",label:"Ultrasonic Clean",price:62,cat:"quick"},
+  {id:"hand",label:"Hand Refitting",price:49.95,cat:"quick"},
+  {id:"stem",label:"Stem Replacement",price:49.95,cat:"quick"},
+  {id:"crowng",label:"Crown Replacement (Generic)",price:39.95,cat:"quick"},
+  {id:"crowngen",label:"Crown Replacement (Genuine)",price:0,cat:"quick",quoted:true},
+  {id:"glassmin",label:"Mineral Glass",price:59.95,cat:"glass"},
+  {id:"glasssaph",label:"Sapphire Glass",price:99.95,cat:"glass"},
+  {id:"glassplexi",label:"Plexi Glass",price:81,cat:"glass"},
+  {id:"polishbasic",label:"Basic Polish",price:75,cat:"polish"},
+  {id:"polishmed",label:"Medium Polish",price:112,cat:"polish"},
+  {id:"polishfull",label:"Full Refinish",price:150,cat:"polish"},
+  {id:"svcbasic",label:"Basic Mechanical Service",price:438,cat:"service"},
+  {id:"svcauto",label:"Automatic Service",price:500,cat:"service"},
+  {id:"svcchrono",label:"Mechanical Chronograph Service",price:688,cat:"service"},
+  {id:"svcquartz",label:"Basic Quartz Service",price:375,cat:"service"},
+  {id:"svcqchrono",label:"Quartz Chronograph Service",price:562,cat:"service"}
+];
+var CAT_LABELS={quick:"Quick Jobs",glass:"Glass",polish:"Polishing",service:"Full Service"};
+
+// OPTIMIZATION: Secure client-side QR generation using QRious
+function QRCode(id,size){
+  size=size||120;
+  var url=APP_URL+"?repair="+encodeURIComponent(id);
+  var canvasRef=useRef(null);
+  
+  useEffect(function(){
+    if(canvasRef.current && window.QRious){
+      new QRious({
+        element: canvasRef.current,
+        value: url,
+        size: size,
+        background: '#ffffff',
+        foreground: '#1a1a2e',
+        padding: 4
+      });
+    }
+  }, [url, size]);
+
+  return h("canvas",{ref:canvasRef,style:{borderRadius:6,border:"1px solid #e5e7eb"}});
+}
+
+function Badge(status){
+  var cfg=STATUS_CONFIG[status]||{color:"#6B7280",bg:"#F9FAFB"};
+  return h("span",{style:{background:cfg.bg,color:cfg.color,border:"1px solid "+cfg.color+"40",borderRadius:20,padding:"3px 12px",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}},status);
+}
+
+// OPTIMIZATION: Ensure print ticket uses safe QR generation
+function printTicket(repair){
+  var url=APP_URL+"?repair="+encodeURIComponent(repair.id);
+  var qrDataUrl = "";
+  if (window.QRious) {
+    var qr = new QRious({ value: url, size: 150, background: '#ffffff', foreground: '#1a1a2e', padding: 4 });
+    qrDataUrl = qr.toDataURL();
+  }
+  
+  var esc=function(s){return(s||"\u2014").replace(/</g,"&lt;").replace(/>/g,"&gt;")};
+  var win=window.open("","_blank");
+  var html='<!DOCTYPE html><html><head><title>'+repair.id+'</title>'
+    +'<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Georgia,serif}'
+    +'.page{background:#fff;padding:24px;display:flex;flex-direction:column;min-height:100vh}'
+    +'.hdr{text-align:center;border-bottom:2px solid #1a1a2e;padding-bottom:14px;margin-bottom:18px}'
+    +'.qrbox{display:flex;align-items:center;gap:16px;border:1.5px dashed #d1d5db;border-radius:10px;padding:14px;margin:16px 0}'
+    +'</style></head><body>'
+    +'<div class="page">'
+    +'<div class="hdr"><b style="font-size:20px;letter-spacing:.08em;color:#1a1a2e">&#9962; CHRONO REPAIR STUDIO</b></div>'
+    +'<div style="font-size:22px;font-weight:bold;text-align:center">'+repair.id+'</div>'
+    +'<div style="margin:20px 0;display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    +'<div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase">Customer</div><b>'+esc(repair.customer_name)+'</b></div>'
+    +'<div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase">Watch</div>'+esc(repair.watch_brand)+'</div>'
+    +'</div>'
+    +'<div class="qrbox"><img src="'+qrDataUrl+'" width="110" height="110" style="border-radius:6px"/>'
+    +'<div style="font-size:11px;color:#6b7280">Scan to check repair status anytime!</div></div>'
+    +'<div style="margin-top:auto;text-align:center;font-size:11px;color:#9ca3af">Keep this receipt. Questions? Call 03 9123 4567</div>'
+    +'</div><scr'+'ipt>window.onload=function(){setTimeout(function(){window.print()},700)}</scr'+'ipt>'
+    +'</body></html>';
+  win.document.write(html);
+  win.document.close();
+}
+
+function QuoteModal(repair,onSend,onClose,iStyle){
+  var _s1=useState(repair.quote||""),quote=_s1[0],setQuote=_s1[1];
+  var _s2=useState(""),msg=_s2[0],setMsg=_s2[1];
+  var _s3=useState(false),busy=_s3[0],setBusy=_s3[1];
+  function send(){
+    if(!quote)return alert("Enter a quote amount");
+    setBusy(true);
+    onSend(repair.id,quote,msg).finally(function(){setBusy(false)});
+  }
+  var preview="Hi "+(repair.customer_name||"there")+", your "+(repair.watch_brand||"watch")+" repair quote is $"+(quote||"___")+"."+(msg?"\n\n"+msg:"")+"\n\nReply YES to go ahead or NO to decline.";
+  return h("div",{style:{position:"fixed",inset:0,background:"#000a",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center"}},
+    h("div",{style:{background:"#1a1a2e",borderRadius:16,padding:28,width:480,maxWidth:"94vw"}},
+      h("div",{style:{fontSize:18,fontWeight:700,marginBottom:6}},"Send Quote SMS"),
+      h("div",{style:{fontSize:13,color:"#fff5",marginBottom:20}},repair.customer_name+" \u2014 "+repair.watch_brand+" \u2014 "+repair.phone),
+      h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"QUOTE ($)"),
+      h("input",{type:"number",value:quote,onChange:function(e){setQuote(e.target.value)},placeholder:"e.g. 250",style:Object.assign({},iStyle,{fontSize:20,fontWeight:700,marginBottom:14})}),
+      h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"EXTRA MESSAGE (optional)"),
+      h("textarea",{value:msg,onChange:function(e){setMsg(e.target.value)},placeholder:"e.g. Parts in stock...",style:Object.assign({},iStyle,{minHeight:60,resize:"vertical",marginBottom:14})}),
+      h("div",{style:{background:"#0f0f1a",borderRadius:8,padding:12,marginBottom:18}},
+        h("div",{style:{fontSize:10,color:"#fff3",marginBottom:6}},"SMS PREVIEW"),
+        h("div",{style:{fontSize:12,color:"#fff7",lineHeight:1.7,whiteSpace:"pre-wrap"}},preview)
+      ),
+      h("div",{style:{display:"flex",gap:10}},
+        h("button",{onClick:send,disabled:busy,style:{flex:1,background:busy?"#6b7280":"#10b981",color:"#fff",border:"none",padding:"12px 20px",borderRadius:8,cursor:busy?"not-allowed":"pointer",fontWeight:700,fontSize:15}},busy?"Sending\u2026":"\uD83D\uDCF1 Send SMS Quote"),
+        h("button",{onClick:onClose,style:{background:"transparent",color:"#fff6",border:"1px solid #fff2",padding:"12px 20px",borderRadius:8,cursor:"pointer"}},"Cancel")
+      )
+    )
+  );
+}
+
+function NewRepairForm(props){
+  var iStyle=props.iStyle,saving=props.saving,form=props.form,setForm=props.setForm,onSave=props.onSave;
+  var _a=useState([]),services=_a[0],setServices=_a[1];
+  var _b=useState(""),mvSearch=_b[0],setMvSearch=_b[1];
+  var _c=useState(null),mvResult=_c[0],setMvResult=_c[1];
+  var _d=useState(false),mvError=_d[0],setMvError=_d[1];
+  var _e=useState([]),customs=_e[0],setCustoms=_e[1];
+  var _f=useState(""),cLabel=_f[0],setCLabel=_f[1];
+  var _g=useState(""),cPrice=_g[0],setCPrice=_g[1];
+  var _h=useState(false),scanning=_h[0],setScanning=_h[1];
+  var fileRef=useRef(null);
+
+  function recalc(svcs,mv,custs){
+    var all=svcs.concat(mv?[mv]:[]).concat(custs);
+    var total=all.reduce(function(s,i){return s+i.price},0);
+    setForm(function(p){return Object.assign({},p,{quote:total||"",issue:all.map(function(i){return i.label+": $"+i.price}).join("\n")})});
+  }
+  function toggleSvc(svc){
+    setServices(function(prev){
+      var exists=prev.find(function(s){return s.id===svc.id});
+      var item=svc.quoted?Object.assign({},svc,{label:svc.label+" (to quote)",price:0}):svc;
+      var next=exists?prev.filter(function(s){return s.id!==svc.id}):prev.concat([item]);
+      recalc(next,mvResult,customs);return next;
+    });
+  }
+  function searchMv(){
+    var q=mvSearch.trim().toUpperCase();
+    var price=MOVEMENTS[q];
+    if(price){var r={id:"mv",label:"Movement: "+q,price:price};setMvResult(r);setMvError(false);recalc(services,r,customs);}
+    else{setMvResult(null);setMvError(true);}
+  }
+  function removeMv(){setMvResult(null);setMvSearch("");setMvError(false);recalc(services,null,customs);}
+  
+  // OPTIMIZATION: Ensure custom price is valid before calculating
+  function addCustom(){
+    if(!cLabel.trim()||!cPrice)return;
+    var parsedPrice = parseFloat(cPrice);
+    if(isNaN(parsedPrice)){ alert("Please enter a valid number for the price."); return; }
+    var item={id:"c-"+Date.now(),label:cLabel.trim(),price:parsedPrice};
+    var next=customs.concat([item]);setCustoms(next);setCLabel("");setCPrice("");recalc(services,mvResult,next);
+  }
+  function removeCustom(id){var next=customs.filter(function(c){return c.id!==id});setCustoms(next);recalc(services,mvResult,next);}
+
+  function handlePhoto(e){
+    var file=e.target.files[0];if(!file)return;
+    setScanning(true);
+    var fd=new FormData();fd.append("photo",file);
+    fetch("/analyze-watch",{method:"POST",body:fd})
+      .then(function(r){return r.text().then(function(t){return{ok:r.ok,status:r.status,text:t}})})
+      .then(function(r){
+        if(!r.ok){var m="Server error "+r.status;try{m=JSON.parse(r.text).error||m}catch(e){}throw new Error(m);}
+        var data=JSON.parse(r.text);
+        if(data.error)throw new Error(data.error);
+        if(data.brand&&data.brand!=="null")setForm(function(p){return Object.assign({},p,{watch_brand:data.brand})});
+        if(data.movement&&data.movement!=="null"){
+          var det=data.movement.toUpperCase().trim();
+          var price=MOVEMENTS[det];
+          if(price){var rv={id:"mv",label:"Movement: "+det+" (Scanned)",price:price};setMvResult(rv);setMvError(false);recalc(services,rv,customs);alert("Scan complete!\nBrand: "+(data.brand||"\u2014")+"\nMovement: "+det+" \u2014 $"+price);}
+          else{setMvSearch(det);setMvError(true);alert("Movement \""+det+"\" not in price list \u2014 add as custom item.");}
+        } else if(data.brand&&data.brand!=="null"){
+          alert("Brand: "+data.brand+"\nNo movement visible \u2014 enter manually.");
+        } else {
+          alert("Couldn't read caseback. Try closer / better lighting.");
+        }
+      })
+      .catch(function(err){alert("Scan failed: "+err.message);})
+      .finally(function(){setScanning(false);if(fileRef.current)fileRef.current.value="";});
+  }
+
+  var allItems=services.concat(mvResult?[mvResult]:[]).concat(customs);
+  var total=allItems.reduce(function(s,i){return s+i.price},0);
+  var btn={border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:14,fontWeight:600};
+
+  return h("div",{style:{padding:"20px 16px",maxWidth:800}},
+    h("h1",{style:{margin:"0 0 20px",fontSize:24}},"New Repair Ticket"),
+    h("input",{type:"file",accept:"image/*",capture:"environment",ref:fileRef,style:{display:"none"},onChange:handlePhoto}),
+    h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
+      h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:14}},"CUSTOMER & WATCH DETAILS"),
+      h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+        [["team_member","Team Member","text"],["customer_name","Customer Name","text"],["phone","Phone","tel"]].map(function(x){
+          return h("div",{key:x[0]},
+            h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},x[1].toUpperCase()),
+            h("input",{type:x[2],value:form[x[0]],onChange:function(e){var k=x[0];setForm(function(p){var o=Object.assign({},p);o[k]=e.target.value;return o})},style:iStyle})
+          );
+        }),
+        h("div",null,
+          h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"BRAND / WATCH"),
+          h("div",{style:{display:"flex",gap:8}},
+            h("input",{type:"text",value:form.watch_brand,onChange:function(e){setForm(function(p){return Object.assign({},p,{watch_brand:e.target.value})})},style:Object.assign({},iStyle,{flex:1})}),
+            h("button",{onClick:function(){fileRef.current&&fileRef.current.click()},disabled:scanning,style:{background:scanning?"#6b7280":"#10b981",color:"#fff",border:"none",borderRadius:10,padding:"0 12px",cursor:scanning?"not-allowed":"pointer",fontWeight:700,fontSize:16}},scanning?"\u23F3":"\uD83D\uDCF8")
+          )
+        ),
+        h("div",null,
+          h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"EST. READY"),
+          h("input",{type:"date",value:form.estimated_ready,onChange:function(e){setForm(function(p){return Object.assign({},p,{estimated_ready:e.target.value})})},style:iStyle})
+        ),
+        h("div",null,
+          h("label",{style:{fontSize:11,color:"#fff4",display:"block",marginBottom:5}},"STATUS"),
+          h("select",{value:form.status,onChange:function(e){setForm(function(p){return Object.assign({},p,{status:e.target.value})})},style:Object.assign({},iStyle,{cursor:"pointer"})},
+            ALL_STATUSES.map(function(s){return h("option",{key:s,value:s},s)})
+          )
+        )
+      )
+    ),
+    h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
+      h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:16}},"JOB BUILDER"),
+      Object.entries(CAT_LABELS).map(function(entry){
+        var cat=entry[0],catLabel=entry[1];
+        return h("div",{key:cat,style:{marginBottom:16}},
+          h("div",{style:{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}},catLabel),
+          h("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+            SERVICES.filter(function(s){return s.cat===cat}).map(function(svc){
+              var active=services.find(function(s){return s.id===svc.id});
+              return h("button",{key:svc.id,onClick:function(){toggleSvc(svc)},style:Object.assign({},btn,{background:active?"#c9a84c":"#fff1",color:active?"#1a1a2e":"#fff",border:active?"none":"1px solid #fff2"})},
+                svc.label+" ",h("span",{style:{opacity:.7,marginLeft:4}},svc.quoted?"(Quote)":"$"+svc.price)
+              );
+            })
+          )
+        );
+      }),
+      h("div",{style:{borderTop:"1px solid #fff1",paddingTop:16,marginBottom:16}},
+        h("div",{style:{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}},"MOVEMENT REPLACEMENT"),
+        h("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
+          h("input",{placeholder:"e.g. NH35, 7N42, 2824-2\u2026",value:mvSearch,onChange:function(e){setMvSearch(e.target.value);setMvError(false)},onKeyDown:function(e){if(e.key==="Enter")searchMv()},style:Object.assign({},iStyle,{maxWidth:260})}),
+          h("button",{onClick:searchMv,style:Object.assign({},btn,{background:"#fff2",color:"#fff",padding:"10px 16px"})},"Search"),
+          mvResult&&h("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#c9a84c20",border:"1px solid #c9a84c50",borderRadius:10,padding:"8px 12px"}},
+            h("span",{style:{color:"#c9a84c",fontWeight:700,fontSize:13}},mvResult.label+" \u2014 $"+mvResult.price),
+            h("button",{onClick:removeMv,style:{background:"transparent",border:"none",color:"#c9a84c",cursor:"pointer",fontSize:18}},"\u00D7")
+          )
+        ),
+        mvError&&h("div",{style:{color:"#ef4444",fontSize:13,marginTop:6}},"Not found \u2014 add as custom item below")
+      ),
+      h("div",{style:{borderTop:"1px solid #fff1",paddingTop:16}},
+        h("div",{style:{fontSize:12,color:"#c9a84c",letterSpacing:".08em",marginBottom:8}},"ADD CUSTOM ITEM"),
+        h("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          h("input",{placeholder:"Description",value:cLabel,onChange:function(e){setCLabel(e.target.value)},style:Object.assign({},iStyle,{flex:2,minWidth:160})}),
+          h("input",{placeholder:"Price $",type:"number",value:cPrice,onChange:function(e){setCPrice(e.target.value)},onKeyDown:function(e){if(e.key==="Enter")addCustom()},style:Object.assign({},iStyle,{width:90})}),
+          h("button",{onClick:addCustom,style:Object.assign({},btn,{background:"#fff2",color:"#fff",padding:"10px 16px"})},"Add")
+        ),
+        customs.length>0&&h("div",{style:{marginTop:10,display:"flex",flexWrap:"wrap",gap:6}},
+          customs.map(function(item){
+            return h("div",{key:item.id,style:{display:"flex",alignItems:"center",gap:8,background:"#fff1",border:"1px solid #fff2",borderRadius:8,padding:"5px 10px"}},
+              h("span",{style:{fontSize:13}},item.label+" \u2014 $"+item.price),
+              h("button",{onClick:function(){removeCustom(item.id)},style:{background:"transparent",border:"none",color:"#fff6",cursor:"pointer",fontSize:15}},"\u00D7")
+            );
+          })
+        )
+      )
+    ),
+    allItems.length>0&&h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
+      h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:12}},"QUOTE BREAKDOWN"),
+      allItems.map(function(item,i){
+        return h("div",{key:i,style:{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #fff1",fontSize:14}},
+          h("span",{style:{color:"#fff9"}},item.label),
+          h("span",{style:{fontWeight:600}},"$"+item.price)
+        );
+      }),
+      h("div",{style:{display:"flex",justifyContent:"space-between",padding:"12px 0 0",fontSize:20,fontWeight:700}},
+        h("span",{style:{color:"#fff6"}},"TOTAL"),
+        h("span",{style:{color:"#c9a84c"}},"$"+total)
+      )
+    ),
+    h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
+      h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"NOTES"),
+      h("textarea",{value:form.notes,onChange:function(e){setForm(function(p){return Object.assign({},p,{notes:e.target.value})})},placeholder:"Any workshop notes\u2026",style:Object.assign({},iStyle,{minHeight:70,resize:"vertical"})})
+    ),
+    h("button",{onClick:onSave,disabled:saving,style:{background:saving?"#6b7280":"#c9a84c",color:"#1a1a2e",border:"none",padding:"13px 28px",borderRadius:12,cursor:saving?"not-allowed":"pointer",fontWeight:700,fontSize:15}},saving?"Saving\u2026":"Create Ticket & Print \u2192")
+  );
+}
+
+function CustomerPage(repair,onBack){
+  var cfg=STATUS_CONFIG[repair.status]||{color:"#6B7280",bg:"#F9FAFB"};
+  return h("div",{style:{minHeight:"100vh",background:"#f8f7f4"}},
+    h("div",{style:{background:"#1a1a2e",padding:"20px 24px",display:"flex",alignItems:"center",gap:16}},
+      h("div",{style:{color:"#c9a84c",fontSize:22,fontWeight:700,letterSpacing:".1em"}},"\u231A CHRONO"),
+      h("div",{style:{color:"#fff6",fontSize:13}},"REPAIR STUDIO"),
+      onBack&&h("button",{onClick:onBack,style:{marginLeft:"auto",background:"transparent",border:"1px solid #fff4",color:"#fff",padding:"6px 16px",borderRadius:6,cursor:"pointer",fontSize:13}},"\u2190 Staff")
+    ),
+    h("div",{style:{maxWidth:540,margin:"0 auto",padding:"32px 20px"}},
+      h("div",{style:{background:"#fff",borderRadius:16,padding:28,marginBottom:20,boxShadow:"0 2px 12px #0001",textAlign:"center"}},
+        h("div",{style:{fontSize:12,color:"#9ca3af",letterSpacing:".08em",marginBottom:6}},"REPAIR TICKET"),
+        h("div",{style:{fontSize:26,fontWeight:700,color:"#1a1a2e",marginBottom:4}},repair.id),
+        h("div",{style:{fontSize:15,color:"#374151",marginBottom:20}},repair.watch_brand),
+        h("div",{style:{background:cfg.bg,border:"2px solid "+cfg.color+"40",borderRadius:12,padding:"14px 20px",marginBottom:16}},
+          h("div",{style:{fontSize:11,color:cfg.color,letterSpacing:".1em",marginBottom:4}},"CURRENT STATUS"),
+          h("div",{style:{fontSize:20,fontWeight:700,color:cfg.color}},repair.status)
+        ),
+        repair.status==="Ready for Collection"&&h("div",{style:{background:"#ecfdf5",border:"1px solid #10b98140",borderRadius:10,padding:14,marginBottom:12,fontSize:14,color:"#065f46"}},"\uD83C\uDF89 Your item is ready! Please bring this ticket."),
+        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,textAlign:"left"}},
+          h("div",{style:{background:"#f9fafb",borderRadius:8,padding:12}},h("div",{style:{fontSize:11,color:"#9ca3af"}},"RECEIVED"),h("div",{style:{fontSize:14,fontWeight:600,marginTop:2}},repair.received_date)),
+          h("div",{style:{background:"#f9fafb",borderRadius:8,padding:12}},h("div",{style:{fontSize:11,color:"#9ca3af"}},"EST. READY"),h("div",{style:{fontSize:14,fontWeight:600,marginTop:2}},repair.estimated_ready||"TBC"))
+        )
+      ),
+      repair.issue&&h("div",{style:{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}},
+        h("div",{style:{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:12}},"WORK BEING DONE"),
+        h("div",{style:{fontSize:14,color:"#374151",lineHeight:1.7}},repair.issue)
+      ),
+      (repair.history||[]).length>0&&h("div",{style:{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}},
+        h("div",{style:{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:20}},"HISTORY"),
+        repair.history.map(function(hh,i){
+          return h("div",{key:i,style:{display:"flex",gap:12,marginBottom:i<repair.history.length-1?14:0}},
+            h("div",{style:{display:"flex",flexDirection:"column",alignItems:"center"}},
+              h("div",{style:{width:9,height:9,borderRadius:"50%",background:i===repair.history.length-1?"#c9a84c":"#d1d5db",flexShrink:0,marginTop:3}}),
+              i<repair.history.length-1&&h("div",{style:{width:1,flex:1,background:"#e5e7eb",minHeight:18,marginTop:3}})
+            ),
+            h("div",null,h("div",{style:{fontSize:11,color:"#9ca3af"}},hh.date),h("div",{style:{fontSize:13,color:"#374151"}},hh.event))
+          );
+        })
+      ),
+      h("div",{style:{textAlign:"center",color:"#9ca3af",fontSize:12}},"Questions? Call us on 03 9123 4567")
+    )
+  );
+}
+
+function App(){
+  var _1=useState([]),repairs=_1[0],setRepairs=_1[1];
+  var _2=useState(true),loading=_2[0],setLoading=_2[1];
+  var _3=useState(null),error=_3[0],setError=_3[1];
+  var _4=useState("dashboard"),view=_4[0],setView=_4[1];
+  var _5=useState(null),selected=_5[0],setSelected=_5[1];
+  var _6=useState(""),search=_6[0],setSearch=_6[1];
+  var _7=useState("All"),filterStatus=_7[0],setFilterStatus=_7[1];
+  var _8=useState(false),saving=_8[0],setSaving=_8[1];
+  var _9=useState(null),notification=_9[0],setNotification=_9[1];
+  var _10=useState(null),quoteModal=_10[0],setQuoteModal=_10[1];
+  var _11=useState(""),noteInput=_11[0],setNoteInput=_11[1];
+  var _12=useState(""),scanInput=_12[0],setScanInput=_12[1];
+  var _13=useState(null),scanResult=_13[0],setScanResult=_13[1];
+  var _14=useState(false),scanError=_14[0],setScanError=_14[1];
+  var emptyForm={team_member:"",customer_name:"",phone:"",watch_brand:"",issue:"",cost_to_business:"",quote:"",estimated_ready:"",status:"Go Ahead",notes:""};
+  var _15=useState(emptyForm),form=_15[0],setForm=_15[1];
+
+  useEffect(function(){
+    var p=new URLSearchParams(window.location.search);
+    var action=p.get("action"),repairId=p.get("repair"),response=p.get("response");
+    if(action==="respond"&&repairId&&response)doCustomerResponse(repairId,response);
+    else if(repairId)loadOne(repairId);
+    else load();
+  },[]);
+
+  function doCustomerResponse(repairId,response){
+    setView("responding");
+    fetch("/customer-respond",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId:repairId,response:response})})
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+      .then(function(r){
+        if(!r.ok)throw new Error(r.data.error);
+        setView("response_done");setSelected({id:repairId,status:r.data.status,response:response});
+      })
+      .catch(function(){setView("response_error");});
+  }
+
+  function load(){
+    setLoading(true);setError(null);
+    sbFetch("repairs?order=received_date.desc.nullslast,id.desc")
+      .then(function(d){setRepairs(d)})
+      .catch(function(e){setError("Could not connect: "+e.message)})
+      .finally(function(){setLoading(false)});
+  }
+
+  function loadOne(id){
+    sbFetch("repairs?id=eq."+encodeURIComponent(id))
+      .then(function(d){if(d.length){setSelected(d[0]);setView("customer")}})
+      .catch(function(){})
+      .finally(function(){setLoading(false)});
+  }
+
+  function saveRepair(){
+    setSaving(true);
+    var id="WR-"+Date.now(),today=new Date().toISOString().slice(0,10);
+    var rec=Object.assign({},form,{id:id,received_date:today,cost_to_business:parseFloat(form.cost_to_business)||null,quote:parseFloat(form.quote)||null,history:[{date:today,event:"Item received and logged"}]});
+    sbFetch("repairs",{method:"POST",body:JSON.stringify(rec),prefer:"return=representation"})
+      .then(function(){return load()})
+      .then(function(){return sbFetch("repairs?id=eq."+id)})
+      .then(function(saved){if(saved.length)printTicket(saved[0]);setView("dashboard");setForm(emptyForm);})
+      .catch(function(e){alert("Error saving: "+e.message)})
+      .finally(function(){setSaving(false)});
+  }
+
+  function changeStatus(id,status){
+    var today=new Date().toISOString().slice(0,10);
+    var r=repairs.find(function(x){return x.id===id})||selected;
+    var history=(r.history||[]).concat([{date:today,event:"Status: "+status}]);
+    sbFetch("repairs?id=eq."+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({status:status,history:history}),prefer:"return=representation"})
+      .then(function(){
+        setSelected(function(p){return p?Object.assign({},p,{status:status,history:history}):p});
+        setRepairs(function(p){return p.map(function(r){return r.id===id?Object.assign({},r,{status:status,history:history}):r})});
+      })
+      .catch(function(e){alert("Error: "+e.message)});
+  }
+
+  function addNote(id,note){
+    if(!note.trim())return;
+    var today=new Date().toISOString().slice(0,10);
+    var r=repairs.find(function(x){return x.id===id})||selected;
+    var notes=(r.notes?r.notes+"\n":"")+note;
+    var history=(r.history||[]).concat([{date:today,event:note}]);
+    sbFetch("repairs?id=eq."+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({notes:notes,history:history}),prefer:"return=representation"})
+      .then(function(){
+        setSelected(function(p){return p?Object.assign({},p,{notes:notes,history:history}):p});
+        setRepairs(function(p){return p.map(function(r){return r.id===id?Object.assign({},r,{notes:notes,history:history}):r})});
+        setNoteInput("");
+      })
+      .catch(function(e){alert("Error: "+e.message)});
+  }
+
+  function sendQuote(repairId,quote,message){
+    return fetch("/send-quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId:repairId,quote:parseFloat(quote),message:message})})
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+      .then(function(r){
+        if(!r.ok)throw new Error(r.data.error);
+        setNotification({type:"success",msg:"Quote SMS sent!"});
+        setQuoteModal(null);load();
+        setTimeout(function(){setNotification(null)},4000);
+      })
+      .catch(function(e){
+        setNotification({type:"error",msg:"Failed: "+e.message});
+        setTimeout(function(){setNotification(null)},5000);
+      });
+  }
+
+  function scan(){
+    var q=scanInput.trim().toLowerCase();
+    var found=repairs.find(function(r){return r.id.toLowerCase()===q||(r.phone&&r.phone.replace(/\s/g,"").includes(q.replace(/\s/g,"")))});
+    if(found){setScanResult(found);setScanError(false);}
+    else{setScanResult(null);setScanError(true);}
+  }
+
+  function deadlineBadge(d){
+    if(!d)return null;
+    var days=Math.floor((new Date()-new Date(d))/86400000);
+    if(days>=9)return{label:days+"d \u26A0\uFE0F OVERDUE",color:"#ef4444",bg:"#1a0000"};
+    if(days>=6)return{label:days+"d \u26A1 Due soon",color:"#f59e0b",bg:"#1a1200"};
+    return null;
+  }
+
+  var filtered=repairs.filter(function(r){
+    var q=search.toLowerCase();
+    return(!q||(r.customer_name||"").toLowerCase().includes(q)||(r.id||"").toLowerCase().includes(q)||(r.watch_brand||"").toLowerCase().includes(q)||(r.phone||"").includes(q))
+      &&(filterStatus==="All"||r.status===filterStatus);
+  });
+  var counts=ALL_STATUSES.reduce(function(a,s){a[s]=repairs.filter(function(r){return r.status===s}).length;return a},{});
+  var iStyle={width:"100%",background:"#0f0f1a",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"10px 14px",fontSize:15,boxSizing:"border-box",outline:"none"};
+
+  if(view==="customer"&&selected)return CustomerPage(selected,function(){setView("detail")});
+  if(view==="responding")return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}},h("div",{style:{color:"#fff6"}},"\u23F3 Processing\u2026"));
+  if((view==="response_done"||view==="response_error")&&selected)return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",background:"#f8f7f4",minHeight:"100vh"}},
+    h("div",{style:{background:"#fff",borderRadius:20,padding:40,maxWidth:420,textAlign:"center"}},
+      h("div",{style:{fontSize:48,marginBottom:16}},view==="response_error"?"\u274C":selected.response==="go"?"\u2705":"\u274C"),
+      h("div",{style:{fontSize:24,fontWeight:700,color:"#1a1a2e",marginBottom:12}},view==="response_error"?"Something went wrong":selected.response==="go"?"Go Ahead Confirmed!":"No Problem!"),
+      h("div",{style:{fontSize:15,color:"#6b7280"}},view==="response_error"?"Couldn't record response.":selected.response==="go"?"We'll get started on your repair!":"We've noted your decision."),
+      h("div",{style:{marginTop:24,fontSize:13,color:"#9ca3af"}},"\u231A Chrono Repair Studio")
+    )
+  );
+
+  return h("div",{style:{minHeight:"100vh",background:"#0f0f1a",color:"#fff",display:"flex"}},
+    notification&&h("div",{style:{position:"fixed",top:20,right:20,zIndex:1000,background:notification.type==="success"?"#065f46":"#7f1d1d",border:"1px solid "+(notification.type==="success"?"#10b981":"#ef4444"),color:"#fff",borderRadius:10,padding:"14px 20px",fontSize:14,fontWeight:600,maxWidth:340}},
+      (notification.type==="success"?"\u2705 ":"\u274C ")+notification.msg),
+    quoteModal&&QuoteModal(repairs.find(function(x){return x.id===quoteModal}),sendQuote,function(){setQuoteModal(null)},iStyle),
+    h("div",{className:"sidebar"},
+      h("div",{style:{padding:"22px 18px",borderBottom:"1px solid #fff1"}},
+        h("div",{style:{color:"#c9a84c",fontSize:20,fontWeight:700,letterSpacing:".08em"}},"\u231A CHRONO"),
+        h("div",{style:{color:"#fff4",fontSize:12,letterSpacing:".1em",marginTop:2}},"REPAIR STUDIO")
+      ),
+      [{id:"dashboard",label:"Dashboard",icon:"\u25A6"},{id:"scan",label:"Scan / Lookup",icon:"\u2299"},{id:"new",label:"New Repair",icon:"+"}].map(function(item){
+        return h("button",{key:item.id,onClick:function(){setView(item.id);setSelected(null)},style:{background:view===item.id?"#fff1":"transparent",border:"none",borderLeft:view===item.id?"3px solid #c9a84c":"3px solid transparent",color:view===item.id?"#fff":"#fff6",padding:"11px 18px",textAlign:"left",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",gap:10,width:"100%"}},
+          h("span",null,item.icon),item.label);
+      }),
+      h("div",{style:{marginTop:"auto",padding:"14px 18px",borderTop:"1px solid #fff1"}},
+        h("div",{style:{fontSize:11,color:"#fff3",letterSpacing:".06em",marginBottom:8}},"STATUS SUMMARY"),
+        ALL_STATUSES.filter(function(s){return counts[s]>0}).map(function(s){
+          return h("div",{key:s,style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff5",marginBottom:3}},
+            h("span",null,s),h("span",{style:{color:STATUS_CONFIG[s].color,fontWeight:700}},counts[s]));
+        }),
+        h("button",{onClick:load,style:{marginTop:12,width:"100%",background:"transparent",border:"1px solid #fff2",color:"#fff5",borderRadius:8,padding:"5px",cursor:"pointer",fontSize:11}},"\u21BB Refresh")
+      )
+    ),
+    h("div",{className:"mscroll",style:{flex:1,overflow:"auto"}},
+      view==="dashboard"&&!selected&&h("div",{style:{padding:"20px 16px"}},
+        h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}},
+          h("div",null,h("h1",{style:{margin:0,fontSize:22}},"Repair Jobs"),h("div",{style:{color:"#fff5",fontSize:14,marginTop:2}},repairs.length+" total")),
+          h("button",{onClick:function(){setView("new")},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"9px 18px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:13}},"+ New")
+        ),
+        error&&h("div",{style:{background:"#1a1a2e",border:"1px solid #ef4444",borderRadius:10,padding:16,color:"#ef4444",marginBottom:16}},error),
+        h("div",{style:{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}},
+          h("input",{placeholder:"Search name, ID, brand, phone\u2026",value:search,onChange:function(e){setSearch(e.target.value)},style:{flex:1,minWidth:200,background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,outline:"none"}}),
+          h("select",{value:filterStatus,onChange:function(e){setFilterStatus(e.target.value)},style:{background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,cursor:"pointer"}},
+            h("option",{value:"All"},"All Statuses"),
+            ALL_STATUSES.map(function(s){return h("option",{key:s,value:s},s)})
+          )
+        ),
+        loading?h("div",{style:{textAlign:"center",padding:60,color:"#fff3"}},"Loading\u2026"):h(Fragment,null,
+          h("div",{className:"dtable",style:{background:"#1a1a2e",borderRadius:12,overflow:"hidden"}},
+            h("div",{style:{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"10px 16px",borderBottom:"1px solid #fff1",fontSize:11,color:"#fff4",letterSpacing:".07em"}},
+              h("span",null,"TICKET"),h("span",null,"CUSTOMER"),h("span",null,"WATCH"),h("span",null,"TEAM"),h("span",null,"STATUS"),h("span",null,"QUOTE"),h("span",null,"DATE IN")
+            ),
+            filtered.length===0?h("div",{style:{padding:40,textAlign:"center",color:"#fff3"}},"No repairs found"):null,
+            filtered.map(function(r,i){
+              var db=deadlineBadge(r.received_date);
+              return h("div",{key:r.id,onClick:function(){setSelected(r);setView("detail")},
+                style:{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"12px 16px",cursor:"pointer",borderBottom:i<filtered.length-1?"1px solid #fff1":"none"},
+                onMouseEnter:function(e){e.currentTarget.style.background="#fff1"},
+                onMouseLeave:function(e){e.currentTarget.style.background="transparent"}},
+                h("span",{style:{color:"#c9a84c",fontSize:13,fontWeight:600}},r.id),
+                h("div",null,h("div",{style:{fontSize:13}},r.customer_name),h("div",{style:{fontSize:11,color:"#fff4",marginTop:1}},r.phone)),
+                h("span",{style:{fontSize:13,color:"#fff8",alignSelf:"center"}},r.watch_brand),
+                h("span",{style:{fontSize:12,color:"#fff5",alignSelf:"center"}},r.team_member),
+                h("div",{style:{alignSelf:"center",display:"flex",flexDirection:"column",gap:3}},
+                  Badge(r.status),
+                  db&&h("span",{style:{fontSize:10,fontWeight:700,color:db.color,background:db.bg,borderRadius:4,padding:"1px 5px",border:"1px solid "+db.color+"40"}},db.label)
+                ),
+                h("span",{style:{fontSize:13,alignSelf:"center"}},r.quote!=null?"$"+r.quote:"\u2014"),
+                h("span",{style:{fontSize:11,color:"#fff5",alignSelf:"center"}},r.received_date||"\u2014")
+              );
+            })
+          ),
+          h("div",{className:"mcards"},
+            filtered.length===0?h("div",{style:{padding:40,textAlign:"center",color:"#fff3"}},"No repairs found"):null,
+            filtered.map(function(r){
+              var db=deadlineBadge(r.received_date);
+              return h("div",{key:r.id,onClick:function(){setSelected(r);setView("detail")},style:{background:"#1a1a2e",borderRadius:12,padding:16,marginBottom:10,cursor:"pointer",border:"1px solid #fff1"}},
+                h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}},h("span",{style:{color:"#c9a84c",fontSize:13,fontWeight:700}},r.id),Badge(r.status)),
+                h("div",{style:{fontSize:17,fontWeight:700,marginBottom:3}},r.customer_name||"\u2014"),
+                h("div",{style:{fontSize:14,color:"#fff6",marginBottom:8}},r.watch_brand||"\u2014"),
+                h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"#fff4"}},
+                  h("span",null,"\uD83D\uDCDE "+(r.phone||"\u2014")),h("span",null,r.quote!=null?"$"+r.quote:"No quote"),h("span",null,r.received_date||"\u2014")
+                ),
+                db&&h("div",{style:{marginTop:8}},h("span",{style:{fontSize:11,fontWeight:700,color:db.color,background:db.bg,borderRadius:4,padding:"2px 8px",border:"1px solid "+db.color+"40"}},db.label))
+              );
+            })
+          )
+        )
+      ),
+      view==="detail"&&selected&&h("div",{style:{padding:"20px 16px",maxWidth:900}},
+        h("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:24,flexWrap:"wrap"}},
+          h("button",{onClick:function(){setSelected(null);setView("dashboard")},style:{background:"transparent",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontSize:13}},"\u2190 Back"),
+          h("h1",{style:{margin:0,fontSize:18}},selected.id),
+          Badge(selected.status),
+          h("div",{style:{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}},
+            selected.phone&&h("button",{onClick:function(){setQuoteModal(selected.id)},style:{background:"#10b981",color:"#fff",border:"none",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}},"\uD83D\uDCAC Quote"),
+            h("button",{onClick:function(){printTicket(selected)},style:{background:"#fff2",color:"#fff",border:"1px solid #fff3",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontSize:13}},"\uD83D\uDDA8 Print"),
+            h("button",{onClick:function(){setView("customer")},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}},"\uD83D\uDC41 Customer View")
+          )
+        ),
+        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"CUSTOMER"),
+            h("div",{style:{fontSize:20,fontWeight:700,marginBottom:6}},selected.customer_name),
+            h("div",{style:{fontSize:14,color:"#fff7",marginBottom:3}},"\uD83D\uDCDE "+(selected.phone||"\u2014")),
+            h("div",{style:{fontSize:14,color:"#fff5"}},"\uD83D\uDC64 "+(selected.team_member||"\u2014"))
+          ),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"WATCH"),
+            h("div",{style:{fontSize:20,fontWeight:700,marginBottom:6}},selected.watch_brand||"\u2014"),
+            h("div",{style:{fontSize:14,color:"#fff5"}},"In: "+selected.received_date),
+            h("div",{style:{fontSize:14,color:"#fff5",marginTop:3}},"Ready: "+(selected.estimated_ready||"TBC"))
+          ),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"FINANCIALS"),
+            h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:8}},h("span",{style:{color:"#fff6",fontSize:14}},"Cost to Business"),h("span",{style:{fontWeight:700}},selected.cost_to_business!=null?"$"+selected.cost_to_business:"\u2014")),
+            h("div",{style:{display:"flex",justifyContent:"space-between"}},h("span",{style:{color:"#fff6",fontSize:14}},"Quote to Customer"),h("span",{style:{fontWeight:700,color:"#c9a84c"}},selected.quote!=null?"$"+selected.quote:"\u2014"))
+          ),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em"}},"QR CODE"),
+            QRCode(selected.id,100),
+            h("button",{onClick:function(){printTicket(selected)},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"6px 14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}},"\uD83D\uDDA8 Print")
+          )
+        ),
+        selected.issue&&h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
+          h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:8}},"WORK BEING DONE"),
+          h("div",{style:{fontSize:14,color:"#fff9",lineHeight:1.7,whiteSpace:"pre-wrap"}},selected.issue)
+        ),
+        h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
+          h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:12}},"UPDATE STATUS"),
+          h("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+            ALL_STATUSES.map(function(s){
+              return h("button",{key:s,onClick:function(){changeStatus(selected.id,s)},style:{background:selected.status===s?STATUS_CONFIG[s].color:"transparent",border:"1px solid "+STATUS_CONFIG[s].color,color:selected.status===s?"#fff":STATUS_CONFIG[s].color,padding:"6px 14px",borderRadius:20,cursor:"pointer",fontSize:13,fontWeight:600}},s);
+            })
+          )
+        ),
+        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"NOTES"),
+            h("div",{style:{fontSize:13,color:"#fff7",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-wrap",minHeight:36}},selected.notes||"No notes yet."),
+            h("textarea",{placeholder:"Add a note\u2026",value:noteInput,onChange:function(e){setNoteInput(e.target.value)},style:{width:"100%",background:"#0f0f1a",border:"1px solid #fff2",color:"#fff",borderRadius:8,padding:10,fontSize:13,minHeight:70,resize:"vertical",boxSizing:"border-box",outline:"none"}}),
+            h("button",{onClick:function(){addNote(selected.id,noteInput)},style:{marginTop:8,background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"7px 16px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:13}},"Add Note")
+          ),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
+            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:12}},"HISTORY"),
+            (selected.history||[]).slice().reverse().map(function(hh,i){
+              return h("div",{key:i,style:{display:"flex",gap:10,marginBottom:10}},
+                h("div",{style:{width:8,height:8,borderRadius:"50%",background:i===0?"#c9a84c":"#fff2",marginTop:4,flexShrink:0}}),
+                h("div",null,h("div",{style:{fontSize:11,color:"#fff3"}},hh.date),h("div",{style:{fontSize:13,color:"#fff7",marginTop:1}},hh.event))
+              );
+            })
+          )
+        )
+      ),
+      view==="scan"&&h("div",{style:{padding:"20px 16px",maxWidth:540}},
+        h("h1",{style:{margin:"0 0 8px",fontSize:22}},"Scan / Lookup"),
+        h("p",{style:{color:"#fff5",marginBottom:24,fontSize:14}},"Enter a ticket ID or phone number."),
+        h("div",{style:{display:"flex",gap:10,marginBottom:20}},
+          h("input",{placeholder:"Ticket ID or phone\u2026",value:scanInput,onChange:function(e){setScanInput(e.target.value);setScanError(false);setScanResult(null)},onKeyDown:function(e){if(e.key==="Enter")scan()},style:{flex:1,background:"#1a1a2e",border:"1px solid #fff3",color:"#fff",borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none"}}),
+          h("button",{onClick:scan,style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"0 20px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14}},"Find")
+        ),
+        scanError&&h("div",{style:{background:"#1a1a2e",border:"1px solid #ef444450",borderRadius:10,padding:16,color:"#ef4444",fontSize:14}},"No repair found."),
+        scanResult&&h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:20}},
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}},
+            h("div",null,
+              h("div",{style:{color:"#c9a84c",fontSize:14,fontWeight:700}},scanResult.id),
+              h("div",{style:{fontSize:20,fontWeight:700,marginTop:3}},scanResult.customer_name),
+              h("div",{style:{color:"#fff6",marginTop:3}},scanResult.watch_brand)
+            ),
+            Badge(scanResult.status)
+          ),
+          h("div",{style:{display:"flex",gap:10}},
+            h("button",{onClick:function(){setSelected(scanResult);setView("detail")},style:{flex:1,background:"#c9a84c",color:"#1a1a2e",border:"none",padding:10,borderRadius:8,cursor:"pointer",fontWeight:700}},"Open"),
+            h("button",{onClick:function(){printTicket(scanResult)},style:{flex:1,background:"transparent",color:"#fff",border:"1px solid #fff3",padding:10,borderRadius:8,cursor:"pointer"}},"\uD83D\uDDA8 Print")
+          )
+        )
+      ),
+      view==="new"&&h(NewRepairForm,{iStyle:iStyle,saving:saving,form:form,setForm:setForm,onSave:saveRepair})
+    ),
+    h("div",{className:"bnav"},
+      [{id:"dashboard",label:"Jobs",icon:"\u25A6"},{id:"scan",label:"Lookup",icon:"\u2299"},{id:"new",label:"New",icon:"+"}].map(function(item){
+        return h("button",{key:item.id,onClick:function(){setView(item.id);setSelected(null)},style:{background:"transparent",border:"none",color:view===item.id?"#c9a84c":"#fff5",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 24px"}},
+          h("span",{style:{fontSize:22}},item.icon),h("span",{style:{fontSize:11}},item.label));
+      })
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+})();
+</script>
+</body>
+</html>
