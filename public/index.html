@@ -228,7 +228,7 @@ function NewRepairForm(props){
   var btn={border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:14,fontWeight:600};
   return h("div",{style:{padding:"20px 16px",maxWidth:800}},
     h("h1",{style:{margin:"0 0 20px",fontSize:24}},"New Repair Ticket"),
-    h("input",{type:"file",accept:"image/*",ref:fileRef,style:{display:"none"},onChange:handlePhoto}),
+    h("input",{type:"file",accept:"image/jpeg,image/png",ref:fileRef,style:{display:"none"},onChange:handlePhoto}),
     h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
       h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:14}},"CUSTOMER & ITEM DETAILS"),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
@@ -616,7 +616,7 @@ function App(){
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
             h("div",{style:{fontSize:11,color:"#fff4"}},"PHOTOS"),
             h("div",null,
-              h("input",{type:"file",accept:"image/*",ref:photoUploadRef,style:{display:"none"},onChange:handleStaffPhotoUpload}),
+              h("input",{type:"file",accept:"image/jpeg,image/png",ref:photoUploadRef,style:{display:"none"},onChange:handleStaffPhotoUpload}),
               h("button",{onClick:function(){photoUploadRef.current&&photoUploadRef.current.click()},disabled:uploadingPhoto,style:{background:"#fff2",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8}},uploadingPhoto?"Uploading\u2026":"Add Photo")
             )
           ),
