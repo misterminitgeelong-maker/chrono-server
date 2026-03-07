@@ -45,7 +45,8 @@ function sbFetch(path,opts){
     headers:Object.assign({"Content-Type":"application/json","Prefer":opts.prefer||"return=representation"},opts.headers||{})
   })).then(function(r){
     if(!r.ok)return r.text().then(function(t){throw new Error(t)});
-    return r.text().then(function(t){return t?JSON.parse(t):[]});
+    var text = r.status !== 204 ? r.text() : Promise.resolve("");
+    return text.then(function(t){return t?JSON.parse(t):[]});
   });
 }
 
@@ -228,7 +229,8 @@ function NewRepairForm(props){
   var btn={border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:14,fontWeight:600};
   return h("div",{style:{padding:"20px 16px",maxWidth:800}},
     h("h1",{style:{margin:"0 0 20px",fontSize:24}},"New Repair Ticket"),
-    h("input",{type:"file",accept:"image/jpeg,image/png",ref:fileRef,style:{display:"none"},onChange:handlePhoto}),
+    // ANDROID: Re-added capture for camera priority
+    h("input",{type:"file",accept:"image/*",capture:"environment",ref:fileRef,style:{display:"none"},onChange:handlePhoto}),
     h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
       h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:14}},"CUSTOMER & ITEM DETAILS"),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
@@ -420,8 +422,8 @@ function App(){
   function load(){
     setLoading(true);setError(null);
     sbFetch("repairs?order=received_date.desc.nullslast,id.desc")
-      .then(function(d){setRepairs(d)})
-      .catch(function(e){setError("Could not connect: "+e.message)})
+      .then(function(d){setRepairs(Array.isArray(d) ? d : [])})
+      .catch(function(e){setError("Syncing with database...")})
       .finally(function(){setLoading(false)});
   }
 
@@ -496,21 +498,6 @@ function App(){
       .catch(function(e){alert("Error: "+e.message)});
   }
 
-  function sendQuote(repairId,quote,message){
-    return fetch("/send-quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId:repairId,quote:parseFloat(quote),message:message})})
-      .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
-      .then(function(r){
-        if(!r.ok)throw new Error(r.data.error);
-        setNotification({type:"success",msg:"SMS sent!"});
-        setQuoteModal(null);load();
-        setTimeout(function(){setNotification(null)},4000);
-      })
-      .catch(function(e){
-        setNotification({type:"error",msg:"Failed: "+e.message});
-        setTimeout(function(){setNotification(null)},5000);
-      });
-  }
-
   function scan(){
     var q=scanInput.trim().toLowerCase();
     var found=repairs.find(function(r){return r.id.toLowerCase()===q||(r.phone&&r.phone.replace(/\s/g,"").includes(q.replace(/\s/g,"")))});
@@ -521,8 +508,8 @@ function App(){
   function deadlineBadge(d){
     if(!d)return null;
     var days=Math.floor((new Date()-new Date(d))/86400000);
-    if(days>=9)return{label:days+"d \u26A0\uFE0F OVERDUE",color:"#ef4444",bg:"#1a0000"};
-    if(days>=6)return{label:days+"d \u26A1 Due soon",color:"#f59e0b",bg:"#1a1200"};
+    if(days>=9)return{label:days+"d OVERDUE",color:"#ef4444"};
+    if(days>=6)return{label:days+"d Due soon",color:"#f59e0b"};
     return null;
   }
 
@@ -537,14 +524,6 @@ function App(){
   if(view==="customer"&&selected)return CustomerPage(selected,function(){setView("detail")});
   if(view==="responding") return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#fff6"}},"\u23F3 Processing\u2026");
   
-  if((view==="response_done"||view==="response_error")&&selected)return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",background:"#f8f7f4",minHeight:"100vh"}},
-    h("div",{style:{background:"#fff",borderRadius:20,padding:40,maxWidth:420,textAlign:"center"}},
-      h("div",{style:{fontSize:48,marginBottom:16}},view==="response_error"?"\u274C":selected.response==="go"?"\u2705":"\u274C"),
-      h("div",{style:{fontSize:24,fontWeight:700,color:"#1a1a2e",marginBottom:12}},view==="response_error"?"Error":selected.response==="go"?"Confirmed!":"No Problem!"),
-      h("div",{style:{marginTop:24,fontSize:13,color:"#9ca3af"}},"\u231A Chrono Repair Studio")
-    )
-  );
-
   return h("div",{style:{minHeight:"100vh",background:"#0f0f1a",color:"#fff",display:"flex"}},
     notification&&h("div",{style:{position:"fixed",top:20,right:20,zIndex:1000,background:notification.type==="success"?"#065f46":"#7f1d1d",border:"1px solid "+(notification.type==="success"?"#10b981":"#ef4444"),color:"#fff",borderRadius:10,padding:"14px 20px",fontSize:14,fontWeight:600,maxWidth:340}},notification.msg),
     quoteModal&&QuoteModal(repairs.find(function(x){return x.id===quoteModal}),sendQuote,function(){setQuoteModal(null)},iStyle),
@@ -591,7 +570,6 @@ function App(){
           ),
           h("div",{className:"mcards"},
             filtered.map(function(r){
-              var db=deadlineBadge(r.received_date);
               return h("div",{key:r.id,onClick:function(){setSelected(r);setView("detail")},style:{background:"#1a1a2e",borderRadius:12,padding:16,marginBottom:10,border:"1px solid #fff1"}},
                 h("div",{style:{display:"flex",justifyContent:"space-between"}},h("span",{style:{color:"#c9a84c",fontWeight:700}},r.id),Badge(r.status)),h("div",{style:{fontSize:17,fontWeight:700}},r.customer_name||"\u2014"),h("div",{style:{fontSize:14,color:"#fff6"}},r.watch_brand||"\u2014")
               );
@@ -614,15 +592,16 @@ function App(){
         ),
         h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-            h("div",{style:{fontSize:11,color:"#fff4"}},"PHOTOS"),
+            h("div",{style:{fontSize:11,color:"#fff4"}},"DOCUMENTATION PHOTOS"),
             h("div",null,
-              h("input",{type:"file",accept:"image/jpeg,image/png",ref:photoUploadRef,style:{display:"none"},onChange:handleStaffPhotoUpload}),
-              h("button",{onClick:function(){photoUploadRef.current&&photoUploadRef.current.click()},disabled:uploadingPhoto,style:{background:"#fff2",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8}},uploadingPhoto?"Uploading\u2026":"Add Photo")
+              // ANDROID: Re-added capture for camera priority
+              h("input",{type:"file",accept:"image/*",capture:"environment",ref:photoUploadRef,style:{display:"none"},onChange:handleStaffPhotoUpload}),
+              h("button",{onClick:function(){photoUploadRef.current&&photoUploadRef.current.click()},disabled:uploadingPhoto,style:{background:"#fff2",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8}},uploadingPhoto?"Uploading\u2026":"\uD83D\uDCF8 Add Photo")
             )
           ),
           (Array.isArray(selected.photos) && selected.photos.length>0) ? h("div",{className:"photo-scroll",style:{display:"flex",gap:12,overflowX:"auto"}},
             selected.photos.map(function(p,i){ return h("a",{key:i,href:p.url,target:"_blank"},h("img",{src:p.url,style:{height:120,width:120,objectFit:"cover",borderRadius:10}})); })
-          ) : h("div",{style:{fontSize:13,color:"#fff5"}},"No photos.")
+          ) : h("div",{style:{fontSize:13,color:"#fff5"}},"No photos attached.")
         ),
         h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
           h("div",{style:{fontSize:11,color:"#fff4",marginBottom:12}},"UPDATE STATUS"),
