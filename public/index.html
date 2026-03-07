@@ -86,13 +86,13 @@ var CAT_LABELS={quick:"Quick Jobs",glass:"Glass",polish:"Polishing",service:"Ful
 
 function QRCode(props){
   var id=props.id, size=props.size||120;
-  var url=APP_URL+"?repair="+encodeURIComponent(id);
   var canvasRef=useRef(null);
   useEffect(function(){
-    if(canvasRef.current && window.QRious){
+    if(canvasRef.current && window.QRious && id){
+      var url=APP_URL+"?repair="+encodeURIComponent(id);
       new QRious({ element: canvasRef.current, value: url, size: size, background: '#ffffff', foreground: '#1a1a2e', padding: 4 });
     }
-  }, [url, size]);
+  }, [id, size]);
   return h("canvas",{ref:canvasRef,style:{borderRadius:6,border:"1px solid #e5e7eb"}});
 }
 
@@ -216,12 +216,9 @@ function NewRepairForm(props){
           var det=data.movement.toUpperCase().trim();
           var price=MOVEMENTS[det];
           if(price){var rv={id:"mv",label:"Movement: "+det+" (Scanned)",price:price};setMvResult(rv);setMvError(false);recalc(services,rv,customs);alert("Scan complete!\nBrand: "+(data.brand||"\u2014")+"\nMovement: "+det+" \u2014 $"+price);}
-          else{setMvSearch(det);setMvError(true);alert("Movement \""+det+"\" not in price list \u2014 add as custom item.");}
-        } else if(data.brand&&data.brand!=="null"){
-          alert("Brand: "+data.brand+"\nNo movement visible \u2014 enter manually.");
-        } else {
-          alert("Couldn't read caseback. Try closer / better lighting.");
-        }
+          else{setMvSearch(det);setMvError(true);alert("Movement \""+det+"\" not in price list.");}
+        } else if(data.brand&&data.brand!=="null"){ alert("Brand: "+data.brand+"\nNo movement visible."); } 
+        else { alert("Couldn't read caseback. Try closer / better lighting."); }
       })
       .catch(function(err){alert("Scan failed: "+err.message);})
       .finally(function(){setScanning(false);if(fileRef.current)fileRef.current.value="";});
@@ -231,7 +228,6 @@ function NewRepairForm(props){
   var btn={border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:14,fontWeight:600};
   return h("div",{style:{padding:"20px 16px",maxWidth:800}},
     h("h1",{style:{margin:"0 0 20px",fontSize:24}},"New Repair Ticket"),
-    // FIXED: Removed capture="environment" to prevent iOS memory crash
     h("input",{type:"file",accept:"image/*",ref:fileRef,style:{display:"none"},onChange:handlePhoto}),
     h("div",{style:{background:"#1a1a2e",borderRadius:15,padding:20,marginBottom:16}},
       h("div",{style:{fontSize:12,color:"#fff4",letterSpacing:".08em",marginBottom:14}},"CUSTOMER & ITEM DETAILS"),
@@ -329,6 +325,7 @@ function NewRepairForm(props){
 
 function CustomerPage(repair,onBack){
   var cfg=STATUS_CONFIG[repair.status]||{color:"#6B7280",bg:"#F9FAFB"};
+  var photos = Array.isArray(repair.photos) ? repair.photos : [];
   return h("div",{style:{minHeight:"100vh",background:"#f8f7f4"}},
     h("div",{style:{background:"#1a1a2e",padding:"20px 24px",display:"flex",alignItems:"center",gap:16}},
       h("div",{style:{color:"#c9a84c",fontSize:22,fontWeight:700,letterSpacing:".1em"}},"\u231A CHRONO"),
@@ -354,10 +351,10 @@ function CustomerPage(repair,onBack){
         h("div",{style:{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:12}},"WORK BEING DONE"),
         h("div",{style:{fontSize:14,color:"#374151",lineHeight:1.7}},repair.issue)
       ),
-      (Array.isArray(repair.photos)&&repair.photos.length>0)&&h("div",{style:{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}},
+      (photos.length>0)&&h("div",{style:{background:"#fff",borderRadius:16,padding:24,marginBottom:20,boxShadow:"0 2px 12px #0001"}},
         h("div",{style:{fontSize:12,color:"#6b7280",letterSpacing:".06em",marginBottom:16}},"PHOTOS"),
         h("div",{className:"photo-scroll",style:{display:"flex",gap:12,overflowX:"auto",paddingBottom:8}},
-          repair.photos.map(function(p,i){
+          photos.map(function(p,i){
             return h("a",{key:i,href:p.url,target:"_blank",style:{flexShrink:0}},
               h("img",{src:p.url,style:{height:120,width:120,objectFit:"cover",borderRadius:10,border:"1px solid #e5e7eb"}})
             );
@@ -400,6 +397,7 @@ function App(){
   var _15=useState(emptyForm),form=_15[0],setForm=_15[1];
   var _16=useState(false),uploadingPhoto=_16[0],setUploadingPhoto=_16[1];
   var photoUploadRef=useRef(null);
+
   useEffect(function(){
     var p=new URLSearchParams(window.location.search);
     var action=p.get("action"),repairId=p.get("repair"),response=p.get("response");
@@ -407,6 +405,7 @@ function App(){
     else if(repairId)loadOne(repairId);
     else load();
   },[]);
+
   function doCustomerResponse(repairId,response){
     setView("responding");
     fetch("/customer-respond",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId:repairId,response:response})})
@@ -417,6 +416,7 @@ function App(){
       })
       .catch(function(){setView("response_error");});
   }
+
   function load(){
     setLoading(true);setError(null);
     sbFetch("repairs?order=received_date.desc.nullslast,id.desc")
@@ -424,68 +424,38 @@ function App(){
       .catch(function(e){setError("Could not connect: "+e.message)})
       .finally(function(){setLoading(false)});
   }
+
   function loadOne(id){
     sbFetch("repairs?id=eq."+encodeURIComponent(id))
       .then(function(d){if(d.length){setSelected(d[0]);setView("customer")}})
       .catch(function(){})
       .finally(function(){setLoading(false)});
   }
+
   function saveRepair(){
     setSaving(true);
     var id="WR-"+Date.now(),today=new Date().toISOString().slice(0,10);
-    var rec=Object.assign({},form,{id:id,received_date:today,cost_to_business:parseFloat(form.cost_to_business)||null,quote:parseFloat(form.quote)||null,history:[{date:today,event:"Item received and logged"}]});
+    var rec=Object.assign({},form,{id:id,received_date:today,cost_to_business:parseFloat(form.cost_to_business)||null,quote:parseFloat(form.quote)||null,history:[{date:today,event:"Item logged"}]});
     sbFetch("repairs",{method:"POST",body:JSON.stringify(rec),prefer:"return=representation"})
       .then(function(){return load()})
       .then(function(){return sbFetch("repairs?id=eq."+id)})
       .then(function(saved){if(saved.length)printTicket(saved[0]);setView("dashboard");setForm(emptyForm);})
-      .catch(function(e){alert("Error saving: "+e.message)})
+      .catch(function(e){alert("Error: "+e.message)})
       .finally(function(){setSaving(false)});
   }
+
   function changeStatus(id,status){
     var today=new Date().toISOString().slice(0,10);
     var r=repairs.find(function(x){return x.id===id})||selected;
     var history=(r.history||[]).concat([{date:today,event:"Status: "+status}]);
     sbFetch("repairs?id=eq."+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({status:status,history:history}),prefer:"return=representation"})
       .then(function(){
-        setSelected(function(p){return p?Object.assign({},p,{status:status,history:history}):p});
+        if(selected && selected.id === id) setSelected(Object.assign({},selected,{status:status,history:history}));
         setRepairs(function(p){return p.map(function(r){return r.id===id?Object.assign({},r,{status:status,history:history}):r})});
       })
       .catch(function(e){alert("Error: "+e.message)});
   }
-  function addNote(id,note){
-    if(!note.trim())return;
-    var today=new Date().toISOString().slice(0,10);
-    var r=repairs.find(function(x){return x.id===id})||selected;
-    var notes=(r.notes?r.notes+"\n":"")+note;
-    var history=(r.history||[]).concat([{date:today,event:note}]);
-    sbFetch("repairs?id=eq."+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({notes:notes,history:history}),prefer:"return=representation"})
-      .then(function(){
-        setSelected(function(p){return p?Object.assign({},p,{notes:notes,history:history}):p});
-        setRepairs(function(p){return p.map(function(r){return r.id===id?Object.assign({},r,{notes:notes,history:history}):r})});
-        setNoteInput("");
-      })
-      .catch(function(e){alert("Error: "+e.message)});
-  }
-  function sendQuote(repairId,quote,message){
-    return fetch("/send-quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId:repairId,quote:parseFloat(quote),message:message})})
-      .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
-      .then(function(r){
-        if(!r.ok)throw new Error(r.data.error);
-        setNotification({type:"success",msg:"Quote SMS sent!"});
-        setQuoteModal(null);load();
-        setTimeout(function(){setNotification(null)},4000);
-      })
-      .catch(function(e){
-        setNotification({type:"error",msg:"Failed: "+e.message});
-        setTimeout(function(){setNotification(null)},5000);
-      });
-  }
-  function scan(){
-    var q=scanInput.trim().toLowerCase();
-    var found=repairs.find(function(r){return r.id.toLowerCase()===q||(r.phone&&r.phone.replace(/\s/g,"").includes(q.replace(/\s/g,"")))});
-    if(found){setScanResult(found);setScanError(false);}
-    else{setScanResult(null);setScanError(true);}
-  }
+
   function handleStaffPhotoUpload(e){
     var file=e.target.files[0];
     if(!file||!selected)return;
@@ -498,10 +468,10 @@ function App(){
       .then(function(r){return r.json()})
       .then(function(data){
         if(data.error)throw new Error(data.error);
-        var updatedRecord = Object.assign({}, selected, { photos: data.photos, history: data.history });
-        setSelected(updatedRecord);
-        setRepairs(function(prev){ return prev.map(function(r){ return r.id===selected.id ? updatedRecord : r }) });
-        setNotification({type:"success",msg:"Photo attached to ticket."});
+        var updated = Object.assign({}, selected, { photos: data.photos, history: data.history });
+        setSelected(updated);
+        setRepairs(function(prev){ return prev.map(function(r){ return r.id===selected.id ? updated : r }) });
+        setNotification({type:"success",msg:"Photo added."});
         setTimeout(function(){setNotification(null)},3000);
       })
       .catch(function(err){ alert("Upload failed: "+err.message) })
@@ -510,6 +480,44 @@ function App(){
         if(photoUploadRef.current) photoUploadRef.current.value="";
       });
   }
+
+  function addNote(id,note){
+    if(!note.trim())return;
+    var today=new Date().toISOString().slice(0,10);
+    var r=repairs.find(function(x){return x.id===id})||selected;
+    var notes=(r.notes?r.notes+"\n":"")+note;
+    var history=(r.history||[]).concat([{date:today,event:note}]);
+    sbFetch("repairs?id=eq."+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({notes:notes,history:history}),prefer:"return=representation"})
+      .then(function(){
+        if(selected && selected.id === id) setSelected(Object.assign({},selected,{notes:notes,history:history}));
+        setRepairs(function(p){return p.map(function(r){return r.id===id?Object.assign({},r,{notes:notes,history:history}):r})});
+        setNoteInput("");
+      })
+      .catch(function(e){alert("Error: "+e.message)});
+  }
+
+  function sendQuote(repairId,quote,message){
+    return fetch("/send-quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({repairId:repairId,quote:parseFloat(quote),message:message})})
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+      .then(function(r){
+        if(!r.ok)throw new Error(r.data.error);
+        setNotification({type:"success",msg:"SMS sent!"});
+        setQuoteModal(null);load();
+        setTimeout(function(){setNotification(null)},4000);
+      })
+      .catch(function(e){
+        setNotification({type:"error",msg:"Failed: "+e.message});
+        setTimeout(function(){setNotification(null)},5000);
+      });
+  }
+
+  function scan(){
+    var q=scanInput.trim().toLowerCase();
+    var found=repairs.find(function(r){return r.id.toLowerCase()===q||(r.phone&&r.phone.replace(/\s/g,"").includes(q.replace(/\s/g,"")))});
+    if(found){setScanResult(found);setScanError(false);}
+    else{setScanResult(null);setScanError(true);}
+  }
+
   function deadlineBadge(d){
     if(!d)return null;
     var days=Math.floor((new Date()-new Date(d))/86400000);
@@ -517,6 +525,7 @@ function App(){
     if(days>=6)return{label:days+"d \u26A1 Due soon",color:"#f59e0b",bg:"#1a1200"};
     return null;
   }
+
   var filtered=repairs.filter(function(r){
     var q=search.toLowerCase();
     return(!q||(r.customer_name||"").toLowerCase().includes(q)||(r.id||"").toLowerCase().includes(q)||(r.watch_brand||"").toLowerCase().includes(q)||(r.phone||"").includes(q))
@@ -524,34 +533,33 @@ function App(){
   });
   var counts=ALL_STATUSES.reduce(function(a,s){a[s]=repairs.filter(function(r){return r.status===s}).length;return a},{});
   var iStyle={width:"100%",background:"#0f0f1a",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"10px 14px",fontSize:15,boxSizing:"border-box",outline:"none"};
+
   if(view==="customer"&&selected)return CustomerPage(selected,function(){setView("detail")});
-  if(view==="responding")return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}},h("div",{style:{color:"#fff6"}},"\u23F3 Processing\u2026"));
+  if(view==="responding") return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#fff6"}},"\u23F3 Processing\u2026");
+  
   if((view==="response_done"||view==="response_error")&&selected)return h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",background:"#f8f7f4",minHeight:"100vh"}},
     h("div",{style:{background:"#fff",borderRadius:20,padding:40,maxWidth:420,textAlign:"center"}},
       h("div",{style:{fontSize:48,marginBottom:16}},view==="response_error"?"\u274C":selected.response==="go"?"\u2705":"\u274C"),
-      h("div",{style:{fontSize:24,fontWeight:700,color:"#1a1a2e",marginBottom:12}},view==="response_error"?"Something went wrong":selected.response==="go"?"Go Ahead Confirmed!":"No Problem!"),
-      h("div",{style:{fontSize:15,color:"#6b7280"}},view==="response_error"?"Couldn't record response.":selected.response==="go"?"We'll get started!":"We've noted your decision."),
+      h("div",{style:{fontSize:24,fontWeight:700,color:"#1a1a2e",marginBottom:12}},view==="response_error"?"Error":selected.response==="go"?"Confirmed!":"No Problem!"),
       h("div",{style:{marginTop:24,fontSize:13,color:"#9ca3af"}},"\u231A Chrono Repair Studio")
     )
   );
+
   return h("div",{style:{minHeight:"100vh",background:"#0f0f1a",color:"#fff",display:"flex"}},
-    notification&&h("div",{style:{position:"fixed",top:20,right:20,zIndex:1000,background:notification.type==="success"?"#065f46":"#7f1d1d",border:"1px solid "+(notification.type==="success"?"#10b981":"#ef4444"),color:"#fff",borderRadius:10,padding:"14px 20px",fontSize:14,fontWeight:600,maxWidth:340}},
-      (notification.type==="success"?"\u2705 ":"\u274C ")+notification.msg),
+    notification&&h("div",{style:{position:"fixed",top:20,right:20,zIndex:1000,background:notification.type==="success"?"#065f46":"#7f1d1d",border:"1px solid "+(notification.type==="success"?"#10b981":"#ef4444"),color:"#fff",borderRadius:10,padding:"14px 20px",fontSize:14,fontWeight:600,maxWidth:340}},notification.msg),
     quoteModal&&QuoteModal(repairs.find(function(x){return x.id===quoteModal}),sendQuote,function(){setQuoteModal(null)},iStyle),
     h("div",{className:"sidebar"},
       h("div",{style:{padding:"22px 18px",borderBottom:"1px solid #fff1"}},
         h("div",{style:{color:"#c9a84c",fontSize:20,fontWeight:700,letterSpacing:".08em"}},"\u231A CHRONO"),
         h("div",{style:{color:"#fff4",fontSize:12,letterSpacing:".1em",marginTop:2}},"REPAIR STUDIO")
       ),
-      [{id:"dashboard",label:"Dashboard",icon:"\u25A6"},{id:"scan",label:"Scan / Lookup",icon:"\u2299"},{id:"new",label:"New Repair",icon:"+"}].map(function(item){
-        return h("button",{key:item.id,onClick:function(){setView(item.id);setSelected(null)},style:{background:view===item.id?"#fff1":"transparent",border:"none",borderLeft:view===item.id?"3px solid #c9a84c":"3px solid transparent",color:view===item.id?"#fff":"#fff6",padding:"11px 18px",textAlign:"left",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",gap:10,width:"100%"}},
-          h("span",null,item.icon),item.label);
+      [{id:"dashboard",label:"Dashboard",icon:"\u25A6"},{id:"scan",label:"Lookup",icon:"\u2299"},{id:"new",label:"New Repair",icon:"+"}].map(function(item){
+        return h("button",{key:item.id,onClick:function(){setView(item.id);setSelected(null)},style:{background:view===item.id?"#fff1":"transparent",border:"none",borderLeft:view===item.id?"3px solid #c9a84c":"3px solid transparent",color:view===item.id?"#fff":"#fff6",padding:"11px 18px",textAlign:"left",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",gap:10,width:"100%"}},h("span",null,item.icon),item.label);
       }),
       h("div",{style:{marginTop:"auto",padding:"14px 18px",borderTop:"1px solid #fff1"}},
         h("div",{style:{fontSize:11,color:"#fff3",letterSpacing:".06em",marginBottom:8}},"STATUS SUMMARY"),
         ALL_STATUSES.filter(function(s){return counts[s]>0}).map(function(s){
-          return h("div",{key:s,style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff5",marginBottom:3}},
-            h("span",null,s),h("span",{style:{color:STATUS_CONFIG[s].color,fontWeight:700}},counts[s]));
+          return h("div",{key:s,style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"#fff5",marginBottom:3}},h("span",null,s),h("span",{style:{color:STATUS_CONFIG[s].color,fontWeight:700}},counts[s]));
         }),
         h("button",{onClick:load,style:{marginTop:12,width:"100%",background:"transparent",border:"1px solid #fff2",color:"#fff5",borderRadius:8,padding:"5px",cursor:"pointer",fontSize:11}},"\u21BB Refresh")
       )
@@ -564,7 +572,7 @@ function App(){
         ),
         error&&h("div",{style:{background:"#1a1a2e",border:"1px solid #ef4444",borderRadius:10,padding:16,color:"#ef4444",marginBottom:16}},error),
         h("div",{style:{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}},
-          h("input",{placeholder:"Search name, ID, brand, phone\u2026",value:search,onChange:function(e){setSearch(e.target.value)},style:{flex:1,minWidth:200,background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,outline:"none"}}),
+          h("input",{placeholder:"Search...",value:search,onChange:function(e){setSearch(e.target.value)},style:{flex:1,minWidth:200,background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,outline:"none"}}),
           h("select",{value:filterStatus,onChange:function(e){setFilterStatus(e.target.value)},style:{background:"#fff1",border:"1px solid #fff2",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:14,cursor:"pointer"}},
             h("option",{value:"All"},"All Statuses"),
             ALL_STATUSES.map(function(s){return h("option",{key:s,value:s},s)})
@@ -572,41 +580,20 @@ function App(){
         ),
         loading?h("div",{style:{textAlign:"center",padding:60,color:"#fff3"}},"Loading\u2026"):h(Fragment,null,
           h("div",{className:"dtable",style:{background:"#1a1a2e",borderRadius:12,overflow:"hidden"}},
-            h("div",{style:{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"10px 16px",borderBottom:"1px solid #fff1",fontSize:11,color:"#fff4",letterSpacing:".07em"}},
-              h("span",null,"TICKET"),h("span",null,"CUSTOMER"),h("span",null,"ITEM"),h("span",null,"TEAM"),h("span",null,"STATUS"),h("span",null,"QUOTE"),h("span",null,"DATE IN")
-            ),
-            filtered.length===0?h("div",{style:{padding:40,textAlign:"center",color:"#fff3"}},"No jobs found"):null,
+            h("div",{style:{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"10px 16px",borderBottom:"1px solid #fff1",fontSize:11,color:"#fff4"}},h("span",null,"TICKET"),h("span",null,"CUSTOMER"),h("span",null,"ITEM"),h("span",null,"TEAM"),h("span",null,"STATUS"),h("span",null,"QUOTE"),h("span",null,"DATE IN")),
             filtered.map(function(r,i){
               var db=deadlineBadge(r.received_date);
               return h("div",{key:r.id,onClick:function(){setSelected(r);setView("detail")},
-                style:{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"12px 16px",cursor:"pointer",borderBottom:i<filtered.length-1?"1px solid #fff1":"none"},
-                onMouseEnter:function(e){e.currentTarget.style.background="#fff1"},
-                onMouseLeave:function(e){e.currentTarget.style.background="transparent"}},
-                h("span",{style:{color:"#c9a84c",fontSize:13,fontWeight:600}},r.id),
-                h("div",null,h("div",{style:{fontSize:13}},r.customer_name),h("div",{style:{fontSize:11,color:"#fff4",marginTop:1}},r.phone)),
-                h("span",{style:{fontSize:13,color:"#fff8",alignSelf:"center"}},r.watch_brand),
-                h("span",{style:{fontSize:12,color:"#fff5",alignSelf:"center"}},r.team_member),
-                h("div",{style:{alignSelf:"center",display:"flex",flexDirection:"column",gap:3}},
-                  Badge(r.status),
-                  db&&h("span",{style:{fontSize:10,fontWeight:700,color:db.color,background:db.bg,borderRadius:4,padding:"1px 5px",border:"1px solid "+db.color+"40"}},db.label)
-                ),
-                h("span",{style:{fontSize:13,alignSelf:"center"}},r.quote!=null?"$"+r.quote:"\u2014"),
-                h("span",{style:{fontSize:11,color:"#fff5",alignSelf:"center"}},r.received_date||"\u2014")
+                style:{display:"grid",gridTemplateColumns:"140px 1fr 1fr 110px 160px 70px 90px",padding:"12px 16px",cursor:"pointer",borderBottom:i<filtered.length-1?"1px solid #fff1":"none"}},
+                h("span",{style:{color:"#c9a84c",fontSize:13,fontWeight:600}},r.id),h("div",null,h("div",{style:{fontSize:13}},r.customer_name),h("div",{style:{fontSize:11,color:"#fff4"}},r.phone)),h("span",{style:{fontSize:13,color:"#fff8"}},r.watch_brand),h("span",{style:{fontSize:12,color:"#fff5"}},r.team_member),h("div",null,Badge(r.status),db&&h("span",{style:{fontSize:10,color:db.color}},db.label)),h("span",null,r.quote!=null?"$"+r.quote:"\u2014"),h("span",null,r.received_date||"\u2014")
               );
             })
           ),
           h("div",{className:"mcards"},
-            filtered.length===0?h("div",{style:{padding:40,textAlign:"center",color:"#fff3"}},"No jobs found"):null,
             filtered.map(function(r){
               var db=deadlineBadge(r.received_date);
-              return h("div",{key:r.id,onClick:function(){setSelected(r);setView("detail")},style:{background:"#1a1a2e",borderRadius:12,padding:16,marginBottom:10,cursor:"pointer",border:"1px solid #fff1"}},
-                h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}},h("span",{style:{color:"#c9a84c",fontSize:13,fontWeight:700}},r.id),Badge(r.status)),
-                h("div",{style:{fontSize:17,fontWeight:700,marginBottom:3}},r.customer_name||"\u2014"),
-                h("div",{style:{fontSize:14,color:"#fff6",marginBottom:8}},r.watch_brand||"\u2014"),
-                h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"#fff4"}},
-                  h("span",null,"\uD83D\uDCDE "+(r.phone||"\u2014")),h("span",null,r.quote!=null?"$"+r.quote:"No quote"),h("span",null,r.received_date||"\u2014")
-                ),
-                db&&h("div",{style:{marginTop:8}},h("span",{style:{fontSize:11,fontWeight:700,color:db.color,background:db.bg,borderRadius:4,padding:"2px 8px",border:"1px solid "+db.color+"40"}},db.label))
+              return h("div",{key:r.id,onClick:function(){setSelected(r);setView("detail")},style:{background:"#1a1a2e",borderRadius:12,padding:16,marginBottom:10,border:"1px solid #fff1"}},
+                h("div",{style:{display:"flex",justifyContent:"space-between"}},h("span",{style:{color:"#c9a84c",fontWeight:700}},r.id),Badge(r.status)),h("div",{style:{fontSize:17,fontWeight:700}},r.customer_name||"\u2014"),h("div",{style:{fontSize:14,color:"#fff6"}},r.watch_brand||"\u2014")
               );
             })
           )
@@ -615,119 +602,49 @@ function App(){
       view==="detail"&&selected&&h("div",{style:{padding:"20px 16px",maxWidth:900}},
         h("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:24,flexWrap:"wrap"}},
           h("button",{onClick:function(){setSelected(null);setView("dashboard")},style:{background:"transparent",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontSize:13}},"\u2190 Back"),
-          h("h1",{style:{margin:0,fontSize:18}},selected.id),
-          Badge(selected.status),
-          h("div",{style:{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}},
-            selected.phone&&h("button",{onClick:function(){setQuoteModal(selected.id)},style:{background:"#10b981",color:"#fff",border:"none",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}},"\uD83D\uDCAC Quote"),
-            h("button",{onClick:function(){printTicket(selected)},style:{background:"#fff2",color:"#fff",border:"1px solid #fff3",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontSize:13}},"\uD83D\uDDA8 Print"),
-            h("button",{onClick:function(){setView("customer")},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}},"\uD83D\uDC41 Customer View")
+          h("h1",{style:{margin:0,fontSize:18}},selected.id),Badge(selected.status),
+          h("div",{style:{marginLeft:"auto",display:"flex",gap:8}},
+            selected.phone&&h("button",{onClick:function(){setQuoteModal(selected.id)},style:{background:"#10b981",color:"#fff",border:"none",padding:"7px 14px",borderRadius:8}},"Quote"),
+            h("button",{onClick:function(){printTicket(selected)},style:{background:"#fff2",border:"1px solid #fff3",color:"#fff",padding:"7px 14px",borderRadius:8}},"Print")
           )
         ),
         h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
-          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
-            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"CUSTOMER"),
-            h("div",{style:{fontSize:20,fontWeight:700,marginBottom:6}},selected.customer_name),
-            h("div",{style:{fontSize:14,color:"#fff7",marginBottom:3}},"\uD83D\uDCDE "+(selected.phone||"\u2014")),
-            h("div",{style:{fontSize:14,color:"#fff5"}},"\uD83D\uDC64 "+(selected.team_member||"\u2014"))
-          ),
-          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
-            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"ITEM"),
-            h("div",{style:{fontSize:20,fontWeight:700,marginBottom:6}},selected.watch_brand||"\u2014"),
-            h("div",{style:{fontSize:14,color:"#fff5"}},"In: "+selected.received_date),
-            h("div",{style:{fontSize:14,color:"#fff5",marginTop:3}},"Ready: "+(selected.estimated_ready||"TBC"))
-          ),
-          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
-            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"FINANCIALS"),
-            h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:8}},h("span",{style:{color:"#fff6",fontSize:14}},"Cost to Business"),h("span",{style:{fontWeight:700}},selected.cost_to_business!=null?"$"+selected.cost_to_business:"\u2014")),
-            h("div",{style:{display:"flex",justifyContent:"space-between"}},h("span",{style:{color:"#fff6",fontSize:14}},"Quote to Customer"),h("span",{style:{fontWeight:700,color:"#c9a84c"}},selected.quote!=null?"$"+selected.quote:"\u2014"))
-          ),
-          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}},
-            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em"}},"QR CODE"),
-            h(QRCode,{id:selected.id,size:100}),
-            h("button",{onClick:function(){printTicket(selected)},style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"6px 14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}},"\uD83D\uDDA8 Print")
-          )
-        ),
-        selected.issue&&h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
-          h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:8}},"WORK BEING DONE"),
-          h("div",{style:{fontSize:14,color:"#fff9",lineHeight:1.7,whiteSpace:"pre-wrap"}},selected.issue)
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},h("div",{style:{fontSize:11,color:"#fff4"}},"CUSTOMER"),h("div",{style:{fontSize:20,fontWeight:700}},selected.customer_name),h("div",{style:{fontSize:14,color:"#fff7"}},selected.phone)),
+          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,display:"flex",flexDirection:"column",alignItems:"center"}},h("div",{style:{fontSize:11,color:"#fff4"}},"QR CODE"),h(QRCode,{id:selected.id,size:100}))
         ),
         h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em"}},"DOCUMENTATION PHOTOS"),
+            h("div",{style:{fontSize:11,color:"#fff4"}},"PHOTOS"),
             h("div",null,
-              // FIXED: Removed capture="environment" to prevent iOS memory crash
               h("input",{type:"file",accept:"image/*",ref:photoUploadRef,style:{display:"none"},onChange:handleStaffPhotoUpload}),
-              h("button",{onClick:function(){photoUploadRef.current&&photoUploadRef.current.click()},disabled:uploadingPhoto,style:{background:uploadingPhoto?"#6b7280":"#fff2",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8,cursor:uploadingPhoto?"not-allowed":"pointer",fontSize:13}},uploadingPhoto?"Uploading\u2026":"\uD83D\uDCF8 Add Photo")
+              h("button",{onClick:function(){photoUploadRef.current&&photoUploadRef.current.click()},disabled:uploadingPhoto,style:{background:"#fff2",border:"1px solid #fff3",color:"#fff",padding:"6px 14px",borderRadius:8}},uploadingPhoto?"Uploading\u2026":"Add Photo")
             )
           ),
-          (Array.isArray(selected.photos)&&selected.photos.length>0)?h("div",{className:"photo-scroll",style:{display:"flex",gap:12,overflowX:"auto",paddingBottom:8}},
-            selected.photos.map(function(p,i){
-              return h("a",{key:i,href:p.url,target:"_blank",style:{flexShrink:0}},
-                h("img",{src:p.url,style:{height:120,width:120,objectFit:"cover",borderRadius:10,border:"1px solid #fff2"}})
-              );
-            })
-          ):h("div",{style:{fontSize:13,color:"#fff5"}},"No photos attached.")
+          (Array.isArray(selected.photos) && selected.photos.length>0) ? h("div",{className:"photo-scroll",style:{display:"flex",gap:12,overflowX:"auto"}},
+            selected.photos.map(function(p,i){ return h("a",{key:i,href:p.url,target:"_blank"},h("img",{src:p.url,style:{height:120,width:120,objectFit:"cover",borderRadius:10}})); })
+          ) : h("div",{style:{fontSize:13,color:"#fff5"}},"No photos.")
         ),
         h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18,marginBottom:16}},
-          h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:12}},"UPDATE STATUS"),
+          h("div",{style:{fontSize:11,color:"#fff4",marginBottom:12}},"UPDATE STATUS"),
           h("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
-            ALL_STATUSES.map(function(s){
-              return h("button",{key:s,onClick:function(){changeStatus(selected.id,s)},style:{background:selected.status===s?STATUS_CONFIG[s].color:"transparent",border:"1px solid "+STATUS_CONFIG[s].color,color:selected.status===s?"#fff":STATUS_CONFIG[s].color,padding:"6px 14px",borderRadius:20,cursor:"pointer",fontSize:13,fontWeight:600}},s);
-            })
-          )
-        ),
-        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
-          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
-            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:10}},"NOTES"),
-            h("div",{style:{fontSize:13,color:"#fff7",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-wrap",minHeight:36}},selected.notes||"No notes yet."),
-            h("textarea",{placeholder:"Add a note\u2026",value:noteInput,onChange:function(e){setNoteInput(e.target.value)},style:{width:"100%",background:"#0f0f1a",border:"1px solid #fff2",color:"#fff",borderRadius:8,padding:10,fontSize:13,minHeight:70,resize:"vertical",boxSizing:"border-box",outline:"none"}}),
-            h("button",{onClick:function(){addNote(selected.id,noteInput)},style:{marginTop:8,background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"7px 16px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:13}},"Add Note")
-          ),
-          h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:18}},
-            h("div",{style:{fontSize:11,color:"#fff4",letterSpacing:".08em",marginBottom:12}},"HISTORY"),
-            (selected.history||[]).slice().reverse().map(function(hh,i){
-              return h("div",{key:i,style:{display:"flex",gap:10,marginBottom:10}},
-                h("div",{style:{width:8,height:8,borderRadius:"50%",background:i===0?"#c9a84c":"#fff2",marginTop:4,flexShrink:0}}),
-                h("div",null,h("div",{style:{fontSize:11,color:"#fff3"}},hh.date),h("div",{style:{fontSize:13,color:"#fff7",marginTop:1}},hh.event))
-              );
-            })
+            ALL_STATUSES.map(function(s){ return h("button",{key:s,onClick:function(){changeStatus(selected.id,s)},style:{background:selected.status===s?STATUS_CONFIG[s].color:"transparent",border:"1px solid "+STATUS_CONFIG[s].color,color:"#fff",padding:"6px 14px",borderRadius:20}},s); })
           )
         )
       ),
       view==="scan"&&h("div",{style:{padding:"20px 16px",maxWidth:540}},
-        h("h1",{style:{margin:"0 0 8px",fontSize:22}},"Scan / Lookup"),
-        h("p",{style:{color:"#fff5",marginBottom:24,fontSize:14}},"Enter a ticket ID or phone number."),
-        h("div",{style:{display:"flex",gap:10,marginBottom:20}},
-          h("input",{placeholder:"Ticket ID or phone\u2026",value:scanInput,onChange:function(e){setScanInput(e.target.value);setScanError(false);setScanResult(null)},onKeyDown:function(e){if(e.key==="Enter")scan()},style:{flex:1,background:"#1a1a2e",border:"1px solid #fff3",color:"#fff",borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none"}}),
-          h("button",{onClick:scan,style:{background:"#c9a84c",color:"#1a1a2e",border:"none",padding:"0 20px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14}},"Find")
-        ),
-        scanError&&h("div",{style:{background:"#1a1a2e",border:"1px solid #ef444450",borderRadius:10,padding:16,color:"#ef4444",fontSize:14}},"No job found."),
-        scanResult&&h("div",{style:{background:"#1a1a2e",borderRadius:12,padding:20}},
-          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}},
-            h("div",null,
-              h("div",{style:{color:"#c9a84c",fontSize:14,fontWeight:700}},scanResult.id),
-              h("div",{style:{fontSize:20,fontWeight:700,marginTop:3}},scanResult.customer_name),
-              h("div",{style:{color:"#fff6",marginTop:3}},scanResult.watch_brand)
-            ),
-            Badge(scanResult.status)
-          ),
-          h("div",{style:{display:"flex",gap:10}},
-            h("button",{onClick:function(){setSelected(scanResult);setView("detail")},style:{flex:1,background:"#c9a84c",color:"#1a1a2e",border:"none",padding:10,borderRadius:8,cursor:"pointer",fontWeight:700}},"Open"),
-            h("button",{onClick:function(){printTicket(scanResult)},style:{flex:1,background:"transparent",color:"#fff",border:"1px solid #fff3",padding:10,borderRadius:8,cursor:"pointer"}},"\uD83D\uDDA8 Print")
-          )
-        )
+        h("h1",null,"Lookup"),h("div",{style:{display:"flex",gap:10,marginTop:20}},h("input",{placeholder:"Ticket ID...",value:scanInput,onChange:function(e){setScanInput(e.target.value)},style:iStyle}),h("button",{onClick:scan,style:{background:"#c9a84c",border:"none",padding:"0 20px",borderRadius:10}},"Find")),
+        scanResult&&h("div",{style:{background:"#1a1a2e",padding:20,marginTop:20,borderRadius:12}},h("div",null,scanResult.customer_name),h("button",{onClick:function(){setSelected(scanResult);setView("detail")},style:{background:"#c9a84c",border:"none",padding:10,width:"100%",marginTop:10,borderRadius:8}},"Open"))
       ),
       view==="new"&&h(NewRepairForm,{iStyle:iStyle,saving:saving,form:form,setForm:setForm,onSave:saveRepair})
     ),
     h("div",{className:"bnav"},
       [{id:"dashboard",label:"Jobs",icon:"\u25A6"},{id:"scan",label:"Lookup",icon:"\u2299"},{id:"new",label:"New",icon:"+"}].map(function(item){
-        return h("button",{key:item.id,onClick:function(){setView(item.id);setSelected(null)},style:{background:"transparent",border:"none",color:view===item.id?"#c9a84c":"#fff5",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 24px"}},
-          h("span",{style:{fontSize:22}},item.icon),h("span",{style:{fontSize:11}},item.label));
+        return h("button",{key:item.id,onClick:function(){setView(item.id);setSelected(null)},style:{background:"transparent",border:"none",color:view===item.id?"#c9a84c":"#fff5",display:"flex",flexDirection:"column",alignItems:"center",padding:"4px 24px"}},h("span",{style:{fontSize:22}},item.icon),h("span",{style:{fontSize:11}},item.label));
       })
     )
   );
 }
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
 })();
 </script>
 </body>
